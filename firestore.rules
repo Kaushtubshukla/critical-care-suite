@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection: readable by admin and app, writable by users
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+    // Notifications broadcast channel
+    match /notifications/{notifId} {
+      allow read, write: if true;
+    }
+    // Live pricing & subscriptions settings
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+  }
+}

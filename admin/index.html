@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Owner Admin Control Panel | Critical Care Suite</title>
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Top Admin Bar -->
+  <header class="admin-navbar">
+    <div class="brand-wrapper">
+      <div class="brand-icon-box">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </div>
+      <div class="brand-title-group">
+        <h1>Critical Care Suite — Owner Admin Portal</h1>
+        <span>Live Cloud Management & GitHub Publishing Engine</span>
+      </div>
+    </div>
+
+    <div class="admin-header-actions">
+      <div class="cloud-status-pill">
+        <span class="status-dot"></span>
+        Firebase Cloud Connected
+      </div>
+      <div class="cloud-status-pill" style="background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.3); color: #38bdf8;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="4"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
+        Android App Suite v2.11
+      </div>
+      <button type="button" id="adminLockBtn" class="btn btn-outline btn-sm" style="font-size: 11.5px; padding: 5px 10px; color: #f87171; border-color: rgba(248, 113, 113, 0.4);">
+        🔒 Lock Portal
+      </button>
+    </div>
+  </header>
+
+  <!-- ADMIN AUTHENTICATION GATE -->
+  <div id="adminAuthGate" style="display: none; position: fixed; inset: 0; background: #070e17; z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #0f1c2d; border: 1px solid #1e3552; border-radius: 16px; padding: 32px 28px; max-width: 400px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.6); text-align: center;">
+      <div style="width: 52px; height: 52px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: white;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <h2 style="font-size: 19px; font-weight: 800; color: white; margin-bottom: 6px;">Owner Administrator Portal</h2>
+      <p style="font-size: 12.5px; color: #94a3b8; margin-bottom: 22px;">Critical Care Suite Cloud Management</p>
+      
+      <form id="adminLoginForm">
+        <div style="text-align: left; margin-bottom: 14px;">
+          <label style="display: block; font-size: 11.5px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase;">Admin Email</label>
+          <input type="email" id="adminGateEmail" class="form-control" value="admin@criticalcare.med" required>
+        </div>
+        <div style="text-align: left; margin-bottom: 20px;">
+          <label style="display: block; font-size: 11.5px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase;">Master Password</label>
+          <input type="password" id="adminGatePass" class="form-control" value="admin123" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 11px; font-size: 14px; font-weight: 700;">
+          🔐 Sign In as Root Administrator
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="admin-container">
+    
+    <!-- Navigation Tabs -->
+    <nav class="admin-tabs">
+      <button class="tab-btn active" data-tab="tab-github">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+        GitHub Publishing Queue
+        <span class="tab-badge" id="githubQueueBadge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-modules">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Published Simulators <span id="publishedModulesCount" style="color: var(--admin-text-muted); font-weight: normal;">(16)</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-archived">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        Archived / Inactive <span id="archivedModulesCount" style="color: var(--admin-text-muted); font-weight: normal;">(0)</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-users">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Doctors & VIP Access <span id="usersCount" style="color: var(--admin-text-muted); font-weight: normal;">(2)</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-broadcast">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Push Notifications
+      </button>
+      <button class="tab-btn" data-tab="tab-pricing">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        💎 Subscriptions &amp; Pricing
+      </button>
+    </nav>
+
+    <!-- TAB 1: GITHUB QUEUE -->
+    <section class="tab-panel active" id="tab-github">
+      <div class="admin-card">
+        <div class="card-header-row">
+          <div>
+            <h2 class="card-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+              GitHub Auto-Detection Review Queue
+            </h2>
+            <p style="font-size: 12.5px; color: var(--admin-text-muted); margin-top: 2px;">
+              New simulators pushed to GitHub repository. Review &amp; test before making live.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="btn btn-outline" id="githubSettingsBtn" title="Configure Private Repository & Personal Access Token">
+              ⚙️ Private Repo / Token
+            </button>
+            <button class="btn btn-primary" id="scanGitHubBtn">
+              🔄 Scan GitHub Now
+            </button>
+          </div>
+        </div>
+
+        <!-- Live GitHub Connection Status Pill & Info -->
+        <div id="githubConnectionBanner" style="background: #08101a; border: 1px solid #1e3552; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+            <span style="font-size: 12px; color: #94a3b8;">Scanning GitHub Cloud:</span>
+            <strong id="ghTargetRepoLabel" style="font-size: 12.5px; color: #38bdf8; font-family: monospace;">apoorvabeats-cyber / ARDS-INTERACTIVE-SIMULATOR</strong>
+            <span id="ghBranchBadge" style="font-size: 11px; background: #1e293b; color: #cbd5e1; padding: 1px 6px; border-radius: 4px; font-family: monospace;">branch: main</span>
+          </div>
+          <div style="font-size: 11.5px; color: #94a3b8;" id="ghEndpointLabel">
+            API: <code style="color: #cbd5e1;">https://api.github.com/repos/.../contents</code>
+          </div>
+        </div>
+
+        <div class="github-queue-list" id="githubQueueList">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: PUBLISHED MODULES -->
+    <section class="tab-panel" id="tab-modules">
+      <div class="admin-card">
+        <div class="card-header-row">
+          <div>
+            <h2 class="card-title">Live Published Medical Simulators</h2>
+            <p style="font-size: 12.5px; color: var(--admin-text-muted); margin-top: 2px;">
+              Toggle Free vs. Pro access or remove simulators from the live app (moves them to archive).
+            </p>
+          </div>
+        </div>
+
+        <div class="table-container-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Simulator Name</th>
+                <th>Specialty</th>
+                <th>Paywall Access Level</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="publishedModulesBody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2.5: ARCHIVED / INACTIVE MODULES -->
+    <section class="tab-panel" id="tab-archived">
+      <div class="admin-card">
+        <div class="card-header-row">
+          <div>
+            <h2 class="card-title">Archived / Deactivated Simulators</h2>
+            <p style="font-size: 12.5px; color: var(--admin-text-muted); margin-top: 2px;">
+              Simulators removed from the live mobile app. Restore any simulator back to active service with 1 click.
+            </p>
+          </div>
+        </div>
+
+        <div class="table-container-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Simulator Name</th>
+                <th>Specialty</th>
+                <th>Removed Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="archivedModulesBody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: USERS & VIP MANAGEMENT -->
+    <section class="tab-panel" id="tab-users">
+      <div class="admin-card">
+        <div class="card-header-row">
+          <div>
+            <h2 class="card-title">Registered Doctors & VIP Entitlement</h2>
+            <p style="font-size: 12.5px; color: var(--admin-text-muted); margin-top: 2px;">
+              Grant complimentary VIP Pro subscriptions to guest faculty, colleagues, and trainees.
+            </p>
+          </div>
+        </div>
+
+        <div class="table-container-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Physician / Account</th>
+                <th>Account Role</th>
+                <th>Subscription Status</th>
+                <th>VIP Override Action</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: BROADCAST NOTIFICATIONS -->
+    <section class="tab-panel" id="tab-broadcast">
+      <div class="admin-card">
+        <h2 class="card-title" style="margin-bottom: 16px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Send Push Notification to All Devices
+        </h2>
+        
+        <div style="max-width: 600px;">
+          <div class="form-group">
+            <label>Notification Headline / Title</label>
+            <input type="text" id="notifTitle" class="form-control" placeholder="e.g., New ARDS Ventilation Simulator Live!">
+          </div>
+          <div class="form-group">
+            <label>Message Body / Clinical Note</label>
+            <textarea id="notifMessage" class="form-control" rows="3" placeholder="e.g., Check out the new 2026 AHA CPR guidelines and step-by-step defibrillation workflow in the emergency module."></textarea>
+          </div>
+          <button class="btn btn-primary" id="sendBroadcastBtn" style="margin-top: 6px;">
+            📡 Send Instant Push Alert
+          </button>
+        </div>
+
+        <!-- Live Sent History -->
+        <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--admin-border);">
+          <h3 style="font-size: 14px; font-weight: 700; color: white; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <span>📋</span> Sent Cloud Notifications History
+          </h3>
+          <div id="broadcastHistoryList">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: SUBSCRIPTIONS & PRICING -->
+    <section class="tab-panel" id="tab-pricing">
+      <!-- Section 1: Live Pricing Rates -->
+      <div class="admin-card" style="margin-bottom: 20px;">
+        <div class="card-header-row">
+          <div>
+            <h2 class="card-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              Live Subscription Pricing Rates
+            </h2>
+            <p style="font-size: 12.5px; color: var(--admin-text-muted); margin-top: 2px;">
+              Configure user subscription fees and free trial period. Updates reflect instantly across all mobile devices.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-outline" id="resetPricingBtn" style="font-size: 12px; padding: 6px 12px;">
+              ↺ Reset Defaults
+            </button>
+            <button class="btn btn-primary" id="savePricingBtn" style="font-size: 12px; padding: 6px 14px;">
+              💾 Save &amp; Broadcast Pricing
+            </button>
+          </div>
+        </div>
+
+        <div class="pricing-grid">
+          <!-- Free Trial -->
+          <div class="pricing-card">
+            <div class="pricing-card-header">
+              <span class="pricing-card-title">🎁 Free Trial</span>
+              <span class="pricing-card-tag">Initial Onboarding</span>
+            </div>
+            <div class="pricing-input-wrapper">
+              <span class="pricing-currency-prefix">Days</span>
+              <input type="number" id="adminTrialDays" value="7" min="1" max="90">
+            </div>
+            <div class="pricing-calc-hint">Full access for all new doctor signups before charge.</div>
+          </div>
+
+          <!-- 1 Month Rate -->
+          <div class="pricing-card">
+            <div class="pricing-card-header">
+              <span class="pricing-card-title">📅 1 Month</span>
+              <span class="pricing-card-tag">Flexible</span>
+            </div>
+            <div class="pricing-input-wrapper">
+              <span class="pricing-currency-prefix">₹</span>
+              <input type="number" id="adminPriceMonthly" value="500" min="0" step="10">
+            </div>
+            <div class="pricing-calc-hint" id="adminMonthlyHint">Billed at ₹500/month after 7-day trial.</div>
+          </div>
+
+          <!-- 6 Months Rate -->
+          <div class="pricing-card">
+            <div class="pricing-card-header">
+              <span class="pricing-card-title">⭐ 6 Months</span>
+              <span class="pricing-card-tag" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">Save 25%</span>
+            </div>
+            <div class="pricing-input-wrapper">
+              <span class="pricing-currency-prefix">₹</span>
+              <input type="number" id="adminPriceSemiannual" value="2250" min="0" step="50">
+            </div>
+            <div class="pricing-calc-hint" id="adminSemiannualHint">₹375/month (₹2,250 every 6 months).</div>
+          </div>
+
+          <!-- 12 Months Rate -->
+          <div class="pricing-card">
+            <div class="pricing-card-header">
+              <span class="pricing-card-title">🏆 12 Months</span>
+              <span class="pricing-card-tag" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">Best Value</span>
+            </div>
+            <div class="pricing-input-wrapper">
+              <span class="pricing-currency-prefix">₹</span>
+              <input type="number" id="adminPriceAnnual" value="4000" min="0" step="100">
+            </div>
+            <div class="pricing-calc-hint" id="adminAnnualHint">₹333/month (₹4,000 billed annually).</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Module Coverage Tier Matrix -->
+      <div class="admin-card">
+        <div class="card-header-row">
+          <div>
+            <h2 class="card-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Subscription Module Coverage Matrix
+            </h2>
+            <p style="font-size: 12.5px; color: var(--admin-text-muted); margin-top: 2px;">
+              Designate which simulators are included in Free Access vs. Pro Paid Subscription vs. VIP Exclusive.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-outline" id="bulkProBtn" style="font-size: 12px; padding: 6px 12px;">
+              🔒 Set All to Pro
+            </button>
+            <button class="btn btn-success" id="saveCoverageMatrixBtn" style="font-size: 12px; padding: 6px 14px;">
+              💾 Save Coverage Matrix to All Devices
+            </button>
+          </div>
+        </div>
+
+        <div class="table-container-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Simulator Name &amp; ID</th>
+                <th>Category</th>
+                <th>Subscription Coverage Tier</th>
+                <th>Access Description</th>
+              </tr>
+            </thead>
+            <tbody id="coverageMatrixBody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: PREVIEW SIMULATOR -->
+  <div class="modal-overlay" id="previewModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="previewModalTitle" style="font-size: 15px; color: white;">Testing Simulator</h3>
+        <button class="btn btn-outline btn-sm close-modal-btn" style="padding: 4px 8px;">✕ Close</button>
+      </div>
+      <div class="modal-body" style="padding: 10px;">
+        <iframe id="previewIframe" class="preview-iframe"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIGURE & PUBLISH -->
+  <div class="modal-overlay" id="publishConfigModal">
+    <div class="modal-content" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 style="font-size: 15px; color: white;">Configure & 1-Click Publish</h3>
+        <button class="btn btn-outline btn-sm close-modal-btn" style="padding: 4px 8px;">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Simulator Display Title</label>
+          <input type="text" id="pubTitle" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Specialty Category</label>
+          <select id="pubCategory" class="form-control">
+            <option value="cardiac">Cardiac & Shock</option>
+            <option value="respiratory">Respiratory Critical Care</option>
+            <option value="neuro">Neurocritical Care</option>
+            <option value="abg">ABG Diagnostics</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Access Level</label>
+          <select id="pubTier" class="form-control">
+            <option value="pro">Pro Locked (Paid Subscription)</option>
+            <option value="free">Free Access (Marketing / Trial)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>File Target</label>
+          <input type="text" id="pubFilename" class="form-control" readonly style="opacity: 0.7;">
+        </div>
+        <div class="form-group">
+          <label>Clinical Description</label>
+          <textarea id="pubDesc" class="form-control" rows="2"></textarea>
+        </div>
+        <button class="btn btn-success" id="confirmPublishBtn" style="width: 100%; margin-top: 10px; justify-content: center;">
+          🚀 Publish Live to Mobile App Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GITHUB REPO SETTINGS (PRIVATE REPO & PERSONAL ACCESS TOKEN) -->
+  <div class="modal-overlay" id="githubSettingsModal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 style="font-size: 15px; color: white;">⚙️ GitHub Repository & Private Token Config</h3>
+        <button class="btn btn-outline btn-sm close-modal-btn" style="padding: 4px 8px;">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 12.5px; color: #94a3b8; margin-bottom: 16px;">
+          Configure your GitHub repository. If your repository is <strong>Private</strong>, provide a GitHub Personal Access Token (PAT) with <code style="color: #38bdf8; background: rgba(56,189,248,0.1); padding: 2px 4px; border-radius: 4px;">repo:read</code> permissions.
+        </p>
+        <div class="form-group">
+          <label>GitHub Owner / Username / Org</label>
+          <input type="text" id="ghCfgOwner" class="form-control" placeholder="e.g. apoorvabeats-cyber">
+        </div>
+        <div class="form-group">
+          <label>GitHub Repository Name</label>
+          <input type="text" id="ghCfgRepo" class="form-control" placeholder="e.g. ARDS-INTERACTIVE-SIMULATOR">
+        </div>
+        <div class="form-group">
+          <label>Branch Name</label>
+          <input type="text" id="ghCfgBranch" class="form-control" placeholder="main" value="main">
+        </div>
+        <div class="form-group">
+          <label>Personal Access Token (PAT) — Required for Private Repos</label>
+          <input type="password" id="ghCfgToken" class="form-control" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+          <small style="font-size: 11px; color: #94a3b8; display: block; margin-top: 4px;">
+            Create token via: GitHub &rarr; Settings &rarr; Developer Settings &rarr; Personal Access Tokens &rarr; Token (classic).
+          </small>
+        </div>
+        <button class="btn btn-primary" id="saveGitHubSettingsBtn" style="width: 100%; margin-top: 12px; justify-content: center;">
+          💾 Save GitHub Config &amp; Test Connection
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script type="module" src="js/admin.js?v=1.2"></script>
+</body>
+</html>

@@ -1,120 +1,2969 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<meta name="theme-color" content="#071b3a">
-<title>Critical Care Interactive Hub</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f4f7fb;color:#14213d}
-.wrap{max-width:900px;margin:auto;padding:18px}
-.hero{background:linear-gradient(135deg,#071b3a,#1457a6);color:#fff;border-radius:24px;padding:28px 22px;margin-bottom:18px}
-h1{font-size:clamp(30px,8vw,48px);line-height:1.05;margin:0 0 10px}
-.hero p{font-size:18px;line-height:1.5;margin:0;color:#dbe9ff}
-.section{background:#fff;border:1px solid #d7e0ec;border-radius:20px;padding:20px;margin:14px 0}
-h2{margin:0 0 14px;font-size:25px}
-.card{display:block;text-decoration:none;color:inherit;border:1px solid #d7e0ec;border-radius:16px;padding:17px;margin:12px 0;background:#fff}
-.card:active{transform:scale(.99)}
-.title{font-weight:800;font-size:19px;color:#1457a6}
-.meta{margin-top:5px;color:#5f6f86;line-height:1.4}
-.badge{display:inline-block;margin-top:10px;padding:6px 10px;border-radius:999px;background:#e9f2ff;color:#1457a6;font-weight:700;font-size:13px}
-.footer{text-align:center;color:#718096;font-size:13px;padding:20px 0}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#07111a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Critical Care Interactive Hub & Simulators</title>
+  
+  <!-- Early Runtime Synchronous Authentication & Native Detection -->
+  <script>
+    (function() {
+      // 1. Check persistent user authentication synchronously (Must be verified or admin)
+      try {
+        var savedProfile = localStorage.getItem('critical_care_user_profile');
+        if (savedProfile) {
+          var u = JSON.parse(savedProfile);
+          var isVerif = u && u.isLoggedIn && (u.emailVerified || u.role === 'admin' || (u.email && u.email.toLowerCase() === 'admin@criticalcare.med'));
+          var isProfDone = u && ((u.role === 'admin') || (u.isProfileComplete === true && !!u.role && !!u.name));
+          if (isVerif && isProfDone) {
+            document.documentElement.classList.add('is-authenticated-user');
+          } else {
+            document.documentElement.classList.remove('is-authenticated-user');
+          }
+        }
+      } catch (e) {}
+
+      // 2. Detect native mobile platform & screen size
+      var isNative = window.Capacitor !== undefined || 
+                     window.location.protocol === 'capacitor:' || 
+                     window.location.protocol === 'file:' ||
+                     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 
+                     (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+                     window.innerWidth <= 900;
+      if (isNative) {
+        document.documentElement.classList.add('is-native-app');
+      }
+    })();
+  </script>
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="app/css/mobile-shell.css">
+  
+  <!-- Live Google Firebase Cloud Engine -->
+  <script type="module" src="app/js/services/firebase-service.js"></script>
+
+  <!-- Web App Manifest for Offline Native Installation -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="app/icons/apple-touch-icon.png">
 </head>
 <body>
-<div class="wrap">
-  <header class="hero">
-    <h1>Critical Care<br>Interactive Hub</h1>
-    <p>Interactive bedside learning tools and clinical simulators.</p>
-  </header>
 
-  <section class="section">
-    <h2>Neurocritical Care</h2>
+  <!-- Global Toast Notification Stack (Root Level for Top Stacking) -->
+  <div class="toast-container" id="toastContainer"></div>
 
-    <a class="card" href="Acute_Ischemic_Stroke_Simulator_V6_FINAL.html">
-      <div class="title">Acute Ischemic Stroke Simulator</div>
-      <div class="meta">Interactive clinical assessment, NIHSS, imaging, IV thrombolysis, EVT and final treatment pathway.</div>
-      <span class="badge">OPEN SIMULATOR →</span>
-    </a>
-    <a class="card" href="TBI_Interactive_Simulator_v5_ICP_Anisocoria.html">
-      <div class="title">Traumatic Brain Injury (TBI) Interactive Simulator</div>
-      <div class="meta">Interactive TBI ABCDE assessment, automatic GCS calculation, CT and laboratory correction, anticoagulant reversal, raised-ICP assessment, tiered ICP management and surgical decision pathway.</div>
-      <span class="badge">OPEN TBI SIMULATOR →</span>
-    </a>
-    <a class="card" href="Intracerebral_Hemorrhage_Interactive_Simulator_v1.html">
-      <div class="title">Intracerebral Hemorrhage (ICH) Interactive Simulator</div>
-      <div class="meta">Interactive ICH assessment, BP management, reversal, imaging, ICP considerations and treatment pathway.</div>
-      <span class="badge">OPEN SIMULATOR →</span>
-    </a>
-    <a class="card" href="Subarachnoid_Hemorrhage_Interactive_Simulator_v1.html">
-      <div class="title">Subarachnoid Hemorrhage (SAH) Interactive Simulator</div>
-      <div class="meta">Interactive SAH assessment, grading, aneurysm pathway and neurocritical-care management.</div>
-      <span class="badge">OPEN SIMULATOR →</span>
-    </a>
-    <a class="card" href="Status_Epilepticus_Interactive_Simulator_v2_EDITABLE.html">
-      <div class="title">Status Epilepticus Interactive Simulator</div>
-      <div class="meta">Interactive status epilepticus assessment, seizure classification, benzodiazepine dosing, second-line therapy, refractory status and escalation pathway.</div>
-      <span class="badge">OPEN SIMULATOR →</span>
-    </a>
-    <a class="card" href="CNS_Infection_Interactive_Algorithm_v7.html">
-      <div class="title">CNS Infection Interactive Algorithm</div>
-      <div class="meta">Interactive meningitis, encephalitis, meningoencephalitis, brain abscess, ventriculitis, TB, cryptococcal and opportunistic CNS infection pathways with ICU complication management.</div>
-      <span class="badge">OPEN ALGORITHM →</span>
-    </a>
-  </section>
+  <!-- CLINICAL SUITE WORKBENCH -->
+  <div class="workbench-layout">
+    <!-- NATIVE CLINICAL APP CONTAINER -->
+    <main class="device-frame-container" id="deviceFrameContainer">
+      <div class="phone-screen">
+        
+        <!-- FULL-SCREEN AUTHENTICATION & ONBOARDING GATEKEEPER (STORE COMPLIANT) -->
+        <div class="auth-gatekeeper-overlay" id="authGatekeeperOverlay">
+          <div class="auth-gatekeeper-card" id="gkMainAuthCard">
+            <div class="auth-brand-badge">
+              <div class="auth-brand-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+              </div>
+              <h2 class="auth-brand-title">Critical Care Suite</h2>
+            </div>
+            <p class="auth-tagline">Bedside Clinical Decision Algorithms &amp; ICU Simulators</p>
 
-  <section class="section">
-    <h2>Respiratory Critical Care</h2>
-    <a class="card" href="Hypoxic_Patient_Respiratory_Critical_Care_Simulator_v22.html?v=20260826">
-      <div class="title">Hypoxic Patient — Respiratory Critical Care Simulator</div>
-      <div class="meta">Interactive ABC stabilization, ABG and A–a gradient interpretation, Type 1/Type 2/Mixed respiratory failure pathways, oxygen, HFNC, NIV and intubation with etiology-based management.</div>
-      <span class="badge">OPEN HYPOXIC PATIENT SIMULATOR →</span>
-    </a>
-    <a class="card" href="ARDS_Active_Simulator.html?v=20260826">
-      <div class="title">ARDS Active Simulator</div>
-      <div class="meta">Interactive ARDS ventilator management with live ABG, P/F ratio, hemodynamics, prone positioning, rescue therapies and clinical decision pathway. Now includes 4 selectable cases (pneumonia, COVID-19, aspiration, sepsis), driving pressure estimate, one-time recruitment maneuver with hemodynamic penalty, and session debrief screen.</div>
-      <span class="badge">OPEN ARDS ACTIVE SIMULATOR →</span>
-    </a>
-    <a class="card" href="COPD_Asthma_V11_CASE_DRIVEN_CHECKED.html?v=20260826">
-      <div class="title">COPD &amp; Asthma Active Simulator</div>
-      <div class="meta">Interactive COPD and asthma case-driven management with live ventilator settings, bronchodilator therapy, escalation and ICU pathway.</div>
-      <span class="badge">OPEN COPD/ASTHMA SIMULATOR →</span>
-    </a>
-    <a class="card" href="COPD_vs_ARDS_Interactive_Atlas_NATIVE.html">
-      <div class="title">COPD vs ARDS Interactive Atlas</div>
-      <div class="meta">Interactive respiratory critical-care learning tool comparing COPD and ARDS pathophysiology, diagnosis and management.</div>
-      <span class="badge">OPEN ATLAS →</span>
-    </a>
-  </section>
+            <!-- Google Cloud Authentication -->
+            <button type="button" class="btn-google-auth" id="gkGoogleAuthBtn">
+              <svg class="google-icon" width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"/>
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24Z"/>
+                <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15Z"/>
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"/>
+              </svg>
+              <span>Continue with Google</span>
+            </button>
 
-  <section class="section">
-    <h2>ABG Interpretation</h2>
-    <a class="card" href="ABG_Photo_Interpreter_Simulator.html?v=20260902">
-      <div class="title">ABG Photo Interpreter</div>
-      <div class="meta">Photograph an ABG report with your device camera — OCR extracts the values automatically. Full 6-step interpretation: pH, primary disorder, compensation (Winter's formula), mixed disorders, P/F ratio, A-a gradient, anion gap and delta-delta. Includes management guidance per abnormality, serial ABG trend tracking and one-tap export summary.</div>
-      <span class="badge">OPEN ABG INTERPRETER →</span>
-    </a>
-  </section>
+            <div class="auth-divider">
+              <span>or continue with email</span>
+            </div>
 
-  <section class="section">
-    <h2>Cardiac Critical Care</h2>
-    <a class="card" href="Cardiac_Rhythm_Decision_Simulator_V29_FINAL_AUDITED.html">
-      <div class="title">Cardiac Rhythm Decision Simulator</div>
-      <div class="meta">Interactive ECG rhythm diagnosis and treatment simulation with moving ECG, pulse and voice feedback, AV blocks, VT/VF, cardiac arrest, ROSC and dynamic 5 Hs & 5 Ts decision pathway.</div>
-      <span class="badge">OPEN CARDIAC RHYTHM SIMULATOR →</span>
-    </a>
-    <a class="card" href="Shock_Identification_Management_Simulator.html?v=20260826">
-      <div class="title">Shock Identification &amp; Management Simulator</div>
-      <div class="meta">Six-page interactive simulator covering user hemodynamic inputs, automatic MAP/CO/CI/SVRI calculations, dynamic echo, shock phenotype diagnosis, shock-specific management pathways, educational TPTD simulation, and final mixed-shock treatment integration.</div>
-      <span class="badge">OPEN SHOCK SIMULATOR →</span>
-    </a>
-  </section>
+            <!-- Segmented Mode Switcher: Setup vs Login -->
+            <div class="auth-tabs-segmented">
+              <button type="button" class="auth-tab-choice active" id="gkTabRegister">Initial Account Setup</button>
+              <button type="button" class="auth-tab-choice" id="gkTabLogin">Sign In</button>
+            </div>
 
-  <div class="footer">Educational decision-support tools • Verify against current guidelines and local protocols.</div>
-</div>
+            <form id="gatekeeperAuthForm">
+              <!-- Professional Medical Role Picker (Reference Image 2) -->
+              <div id="gkRoleGroup">
+                <label class="auth-form-label">Professional Medical Role</label>
+                <select class="auth-form-input" id="gkRoleSelect" required>
+                  <option value="Doctor" selected>Doctor</option>
+                  <option value="Physician Assistant">Physician Assistant</option>
+                  <option value="Nurse/NP">Nurse/NP</option>
+                  <option value="Pharmacist">Pharmacist</option>
+                  <option value="Microbiologist">Microbiologist</option>
+                  <option value="Infection Preventionist">Infection Preventionist</option>
+                  <option value="Student">Student</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div id="gkNameGroup">
+                <label class="auth-form-label">Full Name</label>
+                <input type="text" id="gkFullNameInput" class="auth-form-input" placeholder="e.g. Dr. Rajesh Sharma" required autocomplete="name">
+              </div>
+
+              <div>
+                <label class="auth-form-label">Hospital / Institutional Email</label>
+                <input type="email" id="gkEmailInput" class="auth-form-input" placeholder="physician@hospital.org" required autocomplete="email">
+              </div>
+
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <label class="auth-form-label">Password</label>
+                  <a href="#" id="gkForgotPasswordLink" style="font-size: 11px; color: #38bdf8; text-decoration: none; display: none;">Forgot password?</a>
+                </div>
+                <input type="password" id="gkPasswordInput" class="auth-form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="current-password">
+                <div id="passwordHelpText" style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Must contain at least 8 characters.</div>
+              </div>
+
+              <div id="gkInstitutionGroup">
+                <label class="auth-form-label">Hospital / Medical Center Affiliation (Optional)</label>
+                <input type="text" id="gkInstitutionInput" class="auth-form-input" placeholder="e.g. Apollo Hospital / AIIMS">
+              </div>
+
+              <!-- Dynamic In-Card Clinical Error Alert Banner -->
+              <div class="auth-error-alert" id="gkAuthErrorAlert" style="display: none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span id="gkAuthErrorMessage">Error message here</span>
+              </div>
+
+              <button type="submit" class="auth-submit-btn" id="gkSubmitBtn">
+                Complete Setup &amp; Enter Suite
+              </button>
+            </form>
+
+            <div class="auth-legal-footer">
+              By continuing, you accept our <a id="openTermsLink">Terms of Service</a> &amp; <a id="openPrivacyLink">Privacy Policy</a>.<br>
+              100% Offline Capable &bull; Evidence-Based ICU Protocols
+            </div>
+          </div>
+
+          <!-- DEDICATED MANDATORY EMAIL VERIFICATION WALL (STORE & CLINICAL GRADE) -->
+          <div class="auth-gatekeeper-card" id="gkVerificationCard" style="display: none; text-align: center;">
+            <div class="auth-brand-badge" style="justify-content: center; margin-bottom: 12px;">
+              <div class="auth-brand-icon" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+              </div>
+              <h2 class="auth-brand-title">Email Verification Required</h2>
+            </div>
+            
+            <p style="font-size: 13px; color: #475569; line-height: 1.5; margin-bottom: 16px;">
+              To ensure clinical security and institutional authenticity, please confirm your medical email address before entering the suite.
+            </p>
+
+            <div style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; text-align: center;">
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #0284c7; font-weight: 700; margin-bottom: 4px;">Verification Link Sent To</div>
+              <div id="verifEmailDisplay" style="font-size: 15px; font-weight: 700; color: #0f172a; word-break: break-all;">doctor@hospital.org</div>
+              <div style="display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11.5px; color: #b45309; background: rgba(245, 158, 11, 0.15); font-weight: 600; padding: 4px 12px; border-radius: 20px;">
+                <span style="width: 7px; height: 7px; border-radius: 50%; background: #d97706; display: inline-block;"></span>
+                Awaiting Email Confirmation
+              </div>
+            </div>
+
+            <div style="font-size: 12.5px; color: #334155; margin-bottom: 20px; text-align: left; background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 10px; border-left: 4px solid #0284c7;">
+              <strong style="color: #0f172a;">Next Steps:</strong>
+              <ol style="margin: 6px 0 0 16px; padding: 0; line-height: 1.6; color: #475569;">
+                <li>Open your inbox and click the verification link sent by Firebase.</li>
+                <li>Return here and tap <strong>"I Have Verified My Email"</strong> below.</li>
+              </ol>
+            </div>
+
+            <button type="button" class="auth-submit-btn" id="gkCheckVerifiedBtn" style="margin-bottom: 10px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+              ✅ I Have Verified My Email
+            </button>
+
+            <button type="button" class="btn btn-outline" id="gkResendVerificationBtn" style="width: 100%; padding: 11px; font-size: 13px; font-weight: 600; color: #0284c7; border: 1.5px solid #0284c7; border-radius: 10px; margin-bottom: 16px; background: transparent; cursor: pointer;">
+              ✉️ Resend Verification Email
+            </button>
+
+            <div style="text-align: center;">
+              <a href="#" id="gkBackToAuthLink" style="font-size: 12.5px; color: #64748b; font-weight: 600; text-decoration: underline;">
+                ← Back to Sign In / Use Different Email
+              </a>
+            </div>
+          </div>
+
+          <!-- DEDICATED CLINICAL PROFILE COMPLETION CARD (FOR GOOGLE AUTH & ONBOARDING) -->
+          <div class="auth-gatekeeper-card" id="gkProfileCompletionCard" style="display: none;">
+            <div class="auth-brand-badge">
+              <div class="auth-brand-icon" style="background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <h2 class="auth-brand-title">Complete Your Profile</h2>
+            </div>
+            
+            <p class="auth-tagline" style="margin-bottom: 14px;">Personalize your ICU clinical algorithms, drug calculators &amp; medical telemetry.</p>
+
+            <div style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+              <svg class="google-icon" width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"/>
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24Z"/>
+                <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15Z"/>
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"/>
+              </svg>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 10.5px; text-transform: uppercase; color: #0284c7; font-weight: 700;">Google Account Connected</div>
+                <div id="gkCompleteGoogleEmail" style="font-size: 13.5px; font-weight: 700; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">physician@gmail.com</div>
+              </div>
+            </div>
+
+            <form id="gkProfileCompletionForm">
+              <div>
+                <label class="auth-form-label">Professional Medical Role</label>
+                <select class="auth-form-input" id="gkCompleteRoleSelect" required>
+                  <option value="Doctor" selected>Doctor (Physician / Intensivist)</option>
+                  <option value="Critical Care Fellow">Critical Care Fellow</option>
+                  <option value="Resident Physician">Resident Physician</option>
+                  <option value="Nurse/NP">Nurse / Nurse Practitioner</option>
+                  <option value="EMT / Paramedic">EMT / Paramedic / Emergency Care</option>
+                  <option value="Respiratory Therapist">Respiratory Care Practitioner</option>
+                  <option value="Pharmacist">Clinical Pharmacist</option>
+                  <option value="Student">Medical Student / Trainee</option>
+                  <option value="Other">Other Healthcare Professional</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="auth-form-label">Doctor / Physician Full Name</label>
+                <input type="text" id="gkCompleteFullNameInput" class="auth-form-input" placeholder="e.g. Dr. Rajesh Sharma" required autocomplete="name">
+              </div>
+
+              <div>
+                <label class="auth-form-label">Hospital / Medical Center Affiliation (Optional)</label>
+                <input type="text" id="gkCompleteInstitutionInput" class="auth-form-input" placeholder="e.g. Apollo Hospital / AIIMS / Mayo Clinic">
+              </div>
+
+              <!-- Dynamic In-Card Profile Error Alert Banner -->
+              <div class="auth-error-alert" id="gkProfileErrorAlert" style="display: none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span id="gkProfileErrorMessage">Error message here</span>
+              </div>
+
+              <button type="submit" class="auth-submit-btn" id="gkSaveProfileBtn" style="margin-top: 14px; background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);">
+                Complete Setup &amp; Enter Suite
+              </button>
+            </form>
+
+            <div style="text-align: center; margin-top: 14px;">
+              <a href="#" id="gkCancelProfileLink" style="font-size: 12.5px; color: #64748b; font-weight: 600; text-decoration: underline;">
+                ← Cancel / Switch Account
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- APP VIEWPORT -->
+        <div class="app-viewport">
+          
+          <!-- Native Top App Bar -->
+          <header class="app-header">
+            <div class="header-left">
+              <div class="header-logo-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              </div>
+              <div class="header-title-box">
+                <h2>Critical Care Hub</h2>
+                <span>Clinical Simulators</span>
+              </div>
+            </div>
+            <div class="header-right" style="display: flex; align-items: center; gap: 8px;">
+              <button class="header-auth-btn" id="headerAuthBtn" title="Account & Profile">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Sign In</span>
+              </button>
+              <button class="sub-tier-badge badge-free-tier" id="headerTierBadge" title="Tap to view subscription">
+                <span>UPGRADE TO PRO</span>
+              </button>
+            </div>
+          </header>
+
+          <!-- APP MAIN CONTENT VIEWS (Tabs) -->
+          <div class="app-content-area">
+
+            <!-- TAB 1: SIMULATORS HUB -->
+            <section class="tab-content active" data-tab-content="hub" id="tabHub">
+              
+              <!-- Hero Banner -->
+              <div class="hub-hero-banner">
+                <div class="hero-glow-circle"></div>
+                <h3>Clinical Simulators Hub</h3>
+                <p>Closed-loop physiological engines, ARDS ventilation, stroke pathways & moving ECG telemetry.</p>
+                <div class="hero-stats-row">
+                  <span class="hero-stat-pill"><span class="dot"></span> <span id="heroSimulatorCountText">17 ICU Simulators</span></span>
+                  <span class="hero-stat-pill">⚡ 100% Offline Ready</span>
+                </div>
+              </div>
+
+              <!-- Freemium / Pro Banner -->
+              <div class="pro-upsell-strip" id="hubProBanner">
+                <div class="upsell-left">
+                  <span class="upsell-icon">💎</span>
+                  <div class="upsell-text">
+                    <h4>Unlock All 17 Simulators</h4>
+                    <span>Get ARDS, Stroke, Cardiac & ABG OCR</span>
+                  </div>
+                </div>
+                <button class="btn-upsell" id="hubProBannerBtn">View Plans</button>
+              </div>
+
+              <!-- Search Input -->
+              <div class="search-wrapper">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="simSearchInput" class="search-input" placeholder="Search simulators, keywords, drugs, protocols..." autocomplete="off">
+              </div>
+
+              <!-- Category Filter Chips -->
+              <div class="category-chips-scroll" id="categoryChipsContainer"></div>
+
+              <!-- Simulators Listing / Categorized Sections -->
+              <div id="simulatorsListContainer"></div>
+
+            </section>
+
+            <!-- TAB 2: FAVORITES & RECENTS -->
+            <section class="tab-content" data-tab-content="favorites" id="tabFavorites">
+              <div class="section-header">
+                <div>
+                  <h3 class="section-title">⭐ Bookmarked Simulators</h3>
+                  <span class="section-badge">Fast Bedside Access</span>
+                </div>
+              </div>
+              <div id="favoritesListContainer" style="margin-bottom: 24px;"></div>
+
+              <div class="section-header">
+                <div>
+                  <h3 class="section-title">🕒 Recently Launched</h3>
+                  <span class="section-badge">Recent Clinical Sessions</span>
+                </div>
+              </div>
+              <div id="recentsListContainer"></div>
+            </section>
+
+            <!-- TAB 3: PRO & SUBSCRIPTION -->
+            <section class="tab-content" data-tab-content="pro" id="tabPro">
+              <div class="pro-tab-hero">
+                <div class="pro-hero-badge">💎 PRO UNLIMITED</div>
+                <h2>Critical Care Pro</h2>
+                <p>Designed for intensivists, residents, pulmonologists, emergency physicians and critical care nurses.</p>
+              </div>
+
+              <div class="pro-features-card">
+                <h4>Everything Included in Pro</h4>
+                <div id="proFeaturesContainer"></div>
+              </div>
+
+              <div class="pro-tab-actions">
+                <button class="btn-primary-pro" id="proTabUnlockBtn">Unlock Pro Access (7-Day Trial)</button>
+                <button class="btn-secondary-outline" id="proTabResetBtn">Switch to Free Demo Mode</button>
+              </div>
+            </section>
+
+            <!-- TAB 4: ABOUT & COMPLIANCE -->
+            <section class="tab-content" data-tab-content="about" id="tabAbout">
+              <div class="hub-hero-banner" style="background: linear-gradient(135deg, #112233 0%, #0d1e2d 100%);">
+                <h3>About Critical Care Hub</h3>
+                <p>Interactive bedside clinical simulation suite built for critical care education and decision training.</p>
+                <span class="hero-stat-pill" style="margin-top: 8px;">Version 2.5 (Store Edition)</span>
+              </div>
+
+              <!-- Physician Profile & Account Management Card -->
+              <div class="pro-features-card" style="margin-bottom: 16px; border-left: 3px solid #0284c7;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <h4 style="margin: 0; color: #f8fafc; font-size: 15px;">Physician Profile &amp; Account</h4>
+                  <span class="sanford-plan-badge" id="infoTabRoleBadge" style="font-size: 11px; padding: 2px 8px; background: #e0f2fe; color: #0369a1;">Doctor</span>
+                </div>
+                <p style="font-size: 12.5px; color: #94a3b8; line-height: 1.5; margin-bottom: 12px;" id="infoTabUserText">
+                  Logged in as <strong style="color: #f8fafc;" id="infoTabUserName">Dr. Resident</strong> (<span id="infoTabUserEmail">doctor@hospital.org</span>)
+                </p>
+                <button type="button" class="btn-primary-pro" style="width: 100%; height: 38px; font-size: 13px;" id="openProfileFromInfoBtn">
+                  Manage Profile &amp; Account Settings →
+                </button>
+              </div>
+
+              <div class="pro-features-card">
+                <h4>Medical Compliance (App Store 1.4.1)</h4>
+                <p style="font-size: 12px; color: #cbd5e1; line-height: 1.5; margin-bottom: 12px;">
+                  This software is strictly intended for <strong>medical educational simulation and training purposes only</strong>. It is not designed or certified as a medical device for direct patient diagnosis, prescription, or therapeutic decisions.
+                </p>
+                <button class="btn-secondary-outline" style="width: 100%;" id="reopenDisclaimerBtn">Re-read Clinical Disclaimer</button>
+              </div>
+
+              <div class="pro-features-card">
+                <h4>Guidelines & Evidence Base</h4>
+                <ul style="font-size: 12px; color: #94a3b8; line-height: 1.6; padding-left: 18px;">
+                  <li>ARDSNet & PROSEVA Prone Mechanical Ventilation Protocols</li>
+                  <li>Brain Trauma Foundation (BTF) 4th Edition Guidelines</li>
+                  <li>AHA / ASA Acute Ischemic Stroke & ACLS 2025 Guidelines</li>
+                  <li>Surviving Sepsis Campaign (SSC) 2024 Updates</li>
+                  <li>Neurocritical Care Society Status Epilepticus Guidelines</li>
+                </ul>
+              </div>
+            </section>
+
+          </div>
+
+          <!-- NATIVE BOTTOM NAVIGATION BAR -->
+          <nav class="app-bottom-nav">
+            <button class="nav-item active" data-tab-target="hub">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              <span>Simulators</span>
+            </button>
+
+            <button class="nav-item" data-tab-target="favorites">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+              </svg>
+              <span>Saved</span>
+            </button>
+
+            <button class="nav-item" data-tab-target="pro">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+              <span>Pro Access</span>
+            </button>
+
+            <button class="nav-item" data-tab-target="about">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <span>Info</span>
+            </button>
+          </nav>
+
+          <!-- FULLSCREEN IN-APP SIMULATOR VIEWER -->
+          <div class="simulator-viewer" id="simulatorViewer">
+            <div class="viewer-header">
+              <button class="viewer-back-btn" id="viewerBackBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+                <span>Hub</span>
+              </button>
+
+              <div class="viewer-title-box">
+                <h4 id="viewerTitle">Simulator</h4>
+                <span class="viewer-category-badge" id="viewerCategoryBadge">Critical Care</span>
+              </div>
+
+              <div class="viewer-actions">
+                <button class="viewer-action-btn" id="viewerReloadBtn" title="Restart Simulator">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+                </button>
+                <button class="viewer-action-btn" id="viewerFavBtn" title="Bookmark Simulator">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="viewer-iframe-container">
+              <iframe id="simulatorIframe" class="viewer-iframe" src="about:blank" title="Clinical Simulator"></iframe>
+            </div>
+          </div>
+
+          <!-- SANFORD GUIDE STYLE PAYWALL & SUBSCRIPTION MODAL (Reference Image 1) -->
+          <div class="modal-backdrop" id="paywallModal" aria-hidden="true">
+            <div class="modal-sheet sanford-paywall-sheet">
+              
+              <!-- Header matching Reference Image 1 -->
+              <div class="sanford-header-area">
+                <div class="modal-grab-bar" style="margin: -12px auto 12px auto; background: #cbd5e1;"></div>
+                <h3 class="sanford-main-title">Critical Care Suite</h3>
+                <h4 class="sanford-sub-title">Antimicrobial &amp; Intensive Care for Mobile</h4>
+              </div>
+
+              <!-- Scrollable Body -->
+              <div class="sanford-scroll-content">
+                
+                <!-- 4 Feature Highlight Cards from Reference Image 1 -->
+                <div class="sanford-feature-list">
+                  <div class="sanford-feature-item">
+                    <div class="sanford-feature-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    </div>
+                    <div class="sanford-feature-text">
+                      <h4>Rapid Reference ID Treatment Guidance</h4>
+                      <p>Used worldwide. Award winning ID experts maintain clear and concise guidance.</p>
+                    </div>
+                  </div>
+
+                  <div class="sanford-feature-item">
+                    <div class="sanford-feature-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    </div>
+                    <div class="sanford-feature-text">
+                      <h4>Continuously Updated</h4>
+                      <p>Get the most recent, evidence-based infectious diseases &amp; critical care guidance.</p>
+                    </div>
+                  </div>
+
+                  <!-- Highlighted Card: Mobile Access Only -->
+                  <div class="sanford-highlight-banner">
+                    <div class="icon-box">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="3"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                    </div>
+                    <div>
+                      <h4 style="font-size: 13px; font-weight: 800; color: #0369a1; margin: 0 0 2px 0;">Includes Mobile Access Only</h4>
+                      <p style="font-size: 12px; color: #0284c7; margin: 0;">Content available offline after purchase.*</p>
+                    </div>
+                  </div>
+
+                  <!-- Upgrade Card -->
+                  <div class="sanford-highlight-banner" style="background: #f8fafc; border-color: #e2e8f0;">
+                    <div class="icon-box" style="background: #0369a1;">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    </div>
+                    <div>
+                      <h4 style="font-size: 13px; font-weight: 800; color: #0f172a; margin: 0 0 2px 0;">Upgrade to Critical Care All Access</h4>
+                      <p style="font-size: 12px; color: #64748b; margin: 0;">Adds Web Access + Full Simulator Decision Engines</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SELECTABLE SUBSCRIPTION TIERS (Requested Rates) -->
+                <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 10px;">Select Subscription Plan:</div>
+                <div class="sanford-plans-grid" id="sanfordPlansContainer">
+                  <!-- 1 Month -->
+                  <div class="sanford-plan-card selected" data-sanford-plan="monthly" data-price="500" data-period="month" data-trial="7">
+                    <div class="sanford-plan-radio"></div>
+                    <div class="sanford-plan-details">
+                      <h4>1 Month Access</h4>
+                      <p>1-Week Free Trial, then billed monthly</p>
+                      <span class="sanford-plan-badge">Flexible</span>
+                    </div>
+                    <div class="sanford-plan-price-box">
+                      <div class="sanford-plan-price" id="planPriceMonthly">₹ 500</div>
+                      <span class="sanford-plan-period">/ month</span>
+                    </div>
+                  </div>
+
+                  <!-- 6 Months -->
+                  <div class="sanford-plan-card" data-sanford-plan="semiannual" data-price="2250" data-period="6 months" data-trial="7">
+                    <div class="sanford-plan-radio"></div>
+                    <div class="sanford-plan-details">
+                      <h4>6 Months Access</h4>
+                      <p>1-Week Free Trial, then billed semi-annually</p>
+                      <span class="sanford-plan-badge" style="background: #dcfce7; color: #15803d;">Save 25%</span>
+                    </div>
+                    <div class="sanford-plan-price-box">
+                      <div class="sanford-plan-price" id="planPriceSemiannual">₹ 2,250</div>
+                      <span class="sanford-plan-period">/ 6 mos</span>
+                    </div>
+                  </div>
+
+                  <!-- 12 Months -->
+                  <div class="sanford-plan-card" data-sanford-plan="annual" data-price="4000" data-period="12 months" data-trial="7">
+                    <div class="sanford-plan-radio"></div>
+                    <div class="sanford-plan-details">
+                      <h4>12 Months Access</h4>
+                      <p>1-Week Free Trial, then billed annually</p>
+                      <span class="sanford-plan-badge" style="background: #fef08a; color: #854d0e;">Best Value • Save 33%</span>
+                    </div>
+                    <div class="sanford-plan-price-box">
+                      <div class="sanford-plan-price" id="planPriceAnnual">₹ 4,000</div>
+                      <span class="sanford-plan-period">/ 12 mos</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- FREE TRIAL OFFER TERMS AND CONDITIONS (Exact text from Reference Image 1) -->
+                <div class="sanford-terms-section">
+                  <h4 class="sanford-terms-title">Free Trial Offer Terms and Conditions</h4>
+                  <div class="sanford-terms-list">
+                    <div class="sanford-terms-row">
+                      First-time purchasers are eligible for a one-time 7-day free trial.
+                    </div>
+                    <div class="sanford-terms-row">
+                      During the free trial period, you will not be charged.
+                    </div>
+                    <div class="sanford-terms-row" id="sanfordTermsRenewal">
+                      After the 7-day free trial ends, your subscription will automatically renew at ₹ 500 INR per month unless canceled.
+                    </div>
+                    <div class="sanford-terms-row">
+                      You can cancel anytime in Google Play or App Store. Canceling before the trial ends will prevent any charges.
+                    </div>
+                    <div class="sanford-terms-row">
+                      Subscriptions automatically renew unless canceled.
+                    </div>
+                    <div class="sanford-terms-row footnote">
+                      *Once purchased content is available offline for the duration of your subscription. An active subscription is still required to access content offline.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Promo / VIP Code Redemption -->
+                <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; text-align: center;">
+                  <span style="font-size: 12px; color: #64748b;">Have an Institutional / VIP Code?</span>
+                  <div style="display: flex; gap: 8px; margin-top: 6px;">
+                    <input type="text" id="promoCodeInput" placeholder="Enter VIP Code (e.g. DOCTORVIP)" style="flex: 1; height: 36px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 10px; font-size: 12px; text-transform: uppercase;">
+                    <button type="button" id="redeemPromoBtn" style="padding: 0 14px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer;">Redeem</button>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Sticky Bottom Action Bar matching Reference Image 1 -->
+              <div class="sanford-sticky-footer">
+                <button class="btn-sanford-primary" id="sanfordPrimaryCtaBtn">
+                  7 Days trial, then ₹ 500/month
+                </button>
+                <button class="btn-sanford-close" id="sanfordCloseBtn">
+                  Close
+                </button>
+                <div class="sanford-legal-footer">
+                  By purchasing this subscription, you accept our <a href="#terms">Terms of Use</a> and <a href="#privacy">Privacy Policy</a>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- MEDICAL DISCLAIMER MODAL (App Store Guideline 1.4.1 Compliance) -->
+          <div class="modal-backdrop" id="disclaimerModal" aria-hidden="true">
+            <div class="modal-sheet" style="border-top-color: #f59e0b;">
+              <div class="modal-grab-bar"></div>
+              
+              <div class="disclaimer-modal-card">
+                <div class="disclaimer-icon-box">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+
+                <h3>Clinical Disclaimer &amp; Terms</h3>
+                <span class="disclaimer-compliance-tag">App Store Guideline 1.4.1 Compliance</span>
+
+                <div class="disclaimer-text-box">
+                  <p><strong>Educational &amp; Simulation Use Only:</strong></p>
+                  <p>This application and its embedded physiological simulators (ARDS, TBI, Stroke, Cardiac Arrest, Shock, ABG interpretation) are designed exclusively for continuing medical education, clinical simulation, and training.</p>
+                  <p><strong>Not for Direct Patient Care:</strong></p>
+                  <p>The algorithms and calculations presented do not constitute direct medical advice or formal diagnostic prescriptions. Clinicians must always exercise independent clinical judgment, evaluate individual patient factors, and adhere to local institutional hospital protocols.</p>
+                </div>
+
+                <button class="btn-disclaimer-agree" id="acceptDisclaimerBtn">
+                  I Understand &amp; Agree — Enter Hub
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- INITIAL ACCOUNT SETUP & AUTHENTICATION MODAL (Reference Image 2) -->
+          <div class="modal-backdrop" id="authModal" aria-hidden="true">
+            <div class="modal-sheet account-setup-sheet" style="position: relative;">
+              <button type="button" class="modal-close-icon-btn" id="closeAuthModalBtn" aria-label="Close Profile" title="Close">✕</button>
+              <div class="modal-grab-bar" style="margin: -12px auto 16px auto; background: #cbd5e1;"></div>
+              
+              <!-- Logged Out View: Initial Account Setup -->
+              <div id="authLoggedOutView">
+                <div class="account-setup-header">
+                  <h3 class="account-setup-title">Initial Account Setup</h3>
+                  <p class="account-setup-subtitle">Please let us know a little more about you before getting started.</p>
+                </div>
+
+                <!-- Google Cloud Authentication -->
+                <button type="button" class="btn-google-auth" id="modalGoogleAuthBtn" style="margin-top: 6px;">
+                  <svg class="google-icon" width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24Z"/>
+                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15Z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"/>
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
+
+                <div class="auth-divider">
+                  <span>or continue with email</span>
+                </div>
+
+                <!-- Mode Switcher Tabs -->
+                <div class="setup-tabs-row">
+                  <button type="button" class="setup-tab-btn active" id="tabModeRegister">Create Account</button>
+                  <button type="button" class="setup-tab-btn" id="tabModeLogin">Sign In</button>
+                </div>
+
+                <!-- Registration Form -->
+                <form id="accountSetupForm">
+                  <!-- Role Picker matching Reference Image 2 -->
+                  <div class="setup-form-group" id="rolePickerGroup">
+                    <label>Professional Role</label>
+                    <select class="setup-select" id="setupRoleSelect" required>
+                      <option value="Doctor" selected>Doctor</option>
+                      <option value="Physician Assistant">Physician Assistant</option>
+                      <option value="Nurse/NP">Nurse/NP</option>
+                      <option value="Pharmacist">Pharmacist</option>
+                      <option value="Microbiologist">Microbiologist</option>
+                      <option value="Infection Preventionist">Infection Preventionist</option>
+                      <option value="Student">Student</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div class="setup-form-group" id="nameFieldGroup">
+                    <label>Full Name</label>
+                    <input type="text" id="setupFullNameInput" class="setup-input" placeholder="e.g. Dr. Rajesh Sharma" required value="Dr. Resident">
+                  </div>
+
+                  <div class="setup-form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="authEmailInput" class="setup-input" placeholder="physician@hospital.org" required value="doctor@hospital.org">
+                  </div>
+
+                  <div class="setup-form-group">
+                    <label>Password</label>
+                    <input type="password" id="authPassInput" class="setup-input" placeholder="••••••••" required value="password123">
+                  </div>
+
+                  <div class="setup-form-group" id="institutionFieldGroup">
+                    <label>Hospital / Institution (Optional)</label>
+                    <input type="text" id="setupInstitutionInput" class="setup-input" placeholder="e.g. Apollo Hospital / AIIMS">
+                  </div>
+
+                  <button type="submit" class="btn-setup-submit" id="setupSubmitBtn">
+                    Complete Setup &amp; Start
+                  </button>
+                </form>
+
+                <a href="#" class="setup-guest-link" id="continueAsGuestLink">
+                  Skip for now • Continue as Guest (Free Simulators) →
+                </a>
+              </div>
+
+              <!-- Logged In View: Physician Profile -->
+              <div id="authLoggedInView" style="display: none;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <div style="width: 58px; height: 58px; border-radius: 50%; background: #0284c7; color: white; font-size: 26px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);">
+                    🩺
+                  </div>
+                  <h4 id="profileDisplayName" style="font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0;">Dr. Physician</h4>
+                  <p id="profileEmail" style="font-size: 13px; color: #64748b; margin: 0 0 8px 0;">physician@hospital.org</p>
+                  <div style="display: flex; justify-content: center; gap: 8px;">
+                    <span id="profileRoleBadge" class="sanford-plan-badge" style="font-size: 11px; padding: 4px 10px;">Doctor</span>
+                    <span id="profileTierBadge" class="sanford-plan-badge" style="background: #dcfce7; color: #15803d; font-size: 11px; padding: 4px 10px;">Free Trial Active</span>
+                  </div>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+                  <div style="font-size: 12px; font-weight: 800; color: #0369a1; margin-bottom: 4px;">CURRENT SUBSCRIPTION:</div>
+                  <div id="profileSubDetails" style="font-size: 13px; color: #334155; font-weight: 600;">7-Day Free Trial (6 days remaining)</div>
+                  <button type="button" id="profileUpgradeBtn" style="margin-top: 10px; width: 100%; height: 38px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: 700; font-size: 13px; cursor: pointer;">
+                    View Subscription Plans
+                  </button>
+                </div>
+
+                <!-- Role-Based Owner Admin Access (Only shown if user.role === 'admin') -->
+                <a href="admin/index.html" class="btn-mobile-admin-access" id="roleAdminPortalLink" style="display: none; text-decoration: none;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                  <span>👑 Owner Admin Console</span>
+                </a>
+
+                <!-- Sign Out -->
+                <button type="button" id="authSignOutBtn" style="margin-top: 12px; width: 100%; height: 42px; background: #f8fafc; color: #475569; border: 1.5px solid #cbd5e1; border-radius: 8px; font-weight: 700; font-size: 13.5px; cursor: pointer;">
+                  Sign Out
+                </button>
+
+                <!-- Delete Account & Data (Mandatory for Google Play & Apple App Store Guidelines) -->
+                <button type="button" class="btn-delete-account-trigger" id="deleteAccountBtn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                  <span>Delete Account &amp; Personal Data</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- CONFIRM ACCOUNT DELETION MODAL (Store Compliance) -->
+          <div class="modal-backdrop" id="deleteAccountModal" aria-hidden="true">
+            <div class="modal-sheet" style="background: #ffffff; color: #0f172a; border-radius: 20px; padding: 24px; max-width: 380px; text-align: center;">
+              <div style="font-size: 36px; margin-bottom: 8px;">⚠️</div>
+              <h3 style="font-size: 18px; font-weight: 800; color: #b91c1c; margin-bottom: 8px;">Delete Account &amp; Data?</h3>
+              <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 20px;">
+                This will permanently delete your physician profile, saved simulation debriefs, and active subscription credentials from both this device and Google Firebase. This action cannot be reversed.
+              </p>
+              <div style="display: flex; gap: 10px;">
+                <button type="button" id="cancelDeleteAccountBtn" style="flex: 1; padding: 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 700; color: #475569; cursor: pointer;">
+                  Cancel
+                </button>
+                <button type="button" id="confirmDeleteAccountBtn" style="flex: 1; padding: 10px; background: #ef4444; border: none; border-radius: 8px; font-weight: 700; color: white; cursor: pointer;">
+                  Delete Forever
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- LEGAL TERMS & PRIVACY POLICY MODAL (Store Compliance) -->
+          <div class="modal-backdrop" id="legalModal" aria-hidden="true">
+            <div class="modal-sheet" style="background: #ffffff; color: #0f172a; border-radius: 20px; padding: 24px; max-width: 440px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h3 id="legalModalTitle" style="font-size: 17px; font-weight: 800; color: #0369a1; margin: 0;">Terms of Service &amp; Medical Disclaimer</h3>
+                <button type="button" id="closeLegalModalBtn" style="background: none; border: none; font-size: 18px; color: #64748b; cursor: pointer;">✕</button>
+              </div>
+              <div class="legal-modal-body" id="legalModalContent">
+                <h4>1. Clinical Decision Support Disclaimer</h4>
+                <p>Critical Care Suite is an educational and simulation training tool for healthcare professionals and trainees. It does NOT constitute direct medical advice or formal diagnostic orders.</p>
+                <h4>2. Subscription Terms &amp; In-App Billing</h4>
+                <p>First-time subscribers receive a 7-day free trial. Unless canceled before the trial period expires, subscriptions renew at the selected rate (₹500/mo, ₹2,250/6-mo, or ₹4,000/yr) via your app store account.</p>
+                <h4>3. Data Safety &amp; Privacy Policy</h4>
+                <p>We do not sell personal identification data. Data stored in Google Firebase is encrypted and used solely for account authentication, subscription validation, and debrief logging.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Complete Inlined Runtime Script for 100% Offline & file:/// Protocol Compatibility -->
+  <script>
+  (function() {
+    'use strict';
+
+    // --- 1. SIMULATORS DATA CATALOG ---
+    const SIMULATOR_CATEGORIES = [
+      { id: 'all', name: 'All Tools', count: 13 },
+      { id: 'respiratory', name: 'Respiratory', count: 4 },
+      { id: 'neuro', name: 'Neurocritical', count: 6 },
+      { id: 'cardiac', name: 'Cardiac & Shock', count: 2 },
+      { id: 'abg', name: 'ABG Diagnostics', count: 1 }
+    ];
+
+    const SIMULATORS = [
+      // Respiratory
+      {
+        id: 'hypoxic-patient',
+        title: 'Hypoxic Patient Simulator',
+        subtitle: 'Respiratory Critical Care & ABC Stabilization',
+        category: 'respiratory',
+        categoryLabel: 'Respiratory Care',
+        tier: 'free',
+        file: 'Hypoxic_Patient_Respiratory_Critical_Care_Simulator_v22.html',
+        description: 'Interactive ABC stabilization, ABG and A–a gradient interpretation, Type 1/2/Mixed respiratory failure pathways, HFNC, NIV & intubation.',
+        tags: ['Hypoxia', 'A-a Gradient', 'HFNC', 'NIV', 'Ventilator'],
+        duration: '8-12 min',
+        casesCount: '12 Scenarios',
+        iconBg: '#0f766e'
+      },
+      {
+        id: 'copd-ards-atlas',
+        title: 'COPD vs ARDS Interactive Atlas',
+        subtitle: 'Pathophysiology & Bedside Differentiation',
+        category: 'respiratory',
+        categoryLabel: 'Respiratory Care',
+        tier: 'free',
+        file: 'COPD_vs_ARDS_Interactive_Atlas_NATIVE.html',
+        description: 'Interactive respiratory critical-care atlas comparing COPD and ARDS pathophysiology, diagnostic criteria, imaging, and management differences.',
+        tags: ['Atlas', 'COPD', 'ARDS', 'Pathology', 'Differential'],
+        duration: '5-8 min',
+        casesCount: 'Visual Atlas',
+        iconBg: '#0d9488'
+      },
+      {
+        id: 'ards-active',
+        title: 'ARDS Active Ventilator Simulator',
+        subtitle: 'Closed-Loop Physiology & Protective Ventilation',
+        category: 'respiratory',
+        categoryLabel: 'Respiratory Care',
+        tier: 'pro',
+        file: 'ARDS_Active_Simulator.html',
+        description: 'Closed-loop ARDS mechanical ventilation with live telemetry, P/F ratio, driving pressure calculation, prone positioning, recruitment maneuvers & debrief.',
+        tags: ['ARDS', 'Low Tidal Volume', 'PEEP Titration', 'Prone', 'Driving Pressure'],
+        duration: '10-15 min',
+        casesCount: '4 Clinical Cases',
+        iconBg: '#1d4ed8'
+      },
+      {
+        id: 'copd-asthma',
+        title: 'COPD & Asthma Active Simulator',
+        subtitle: 'Obstructive Crisis & Mechanical Ventilation',
+        category: 'respiratory',
+        categoryLabel: 'Respiratory Care',
+        tier: 'pro',
+        file: 'COPD_Asthma_V11_CASE_DRIVEN_CHECKED.html',
+        description: 'Interactive COPD exacerbation and status asthmaticus management with live ventilator graphics, auto-PEEP tracking, bronchodilator dosing & ICU escalation.',
+        tags: ['COPD', 'Asthma', 'Auto-PEEP', 'Bronchospasm', 'NIV Failure'],
+        duration: '8-12 min',
+        casesCount: '6 Case Profiles',
+        iconBg: '#0284c7'
+      },
+
+      // Neurocritical
+      {
+        id: 'stroke-simulator',
+        title: 'Acute Ischemic Stroke Simulator',
+        subtitle: 'NIHSS, IV Thrombolysis & Endovascular Thrombectomy',
+        category: 'neuro',
+        categoryLabel: 'Neurocritical Care',
+        tier: 'pro',
+        file: 'Acute_Ischemic_Stroke_Simulator_V6_FINAL.html',
+        description: 'Comprehensive acute stroke assessment with live NIHSS scoring, automated CT/CTA review, IV thrombolysis contraindication checker, and EVT referral pathway.',
+        tags: ['AIS', 'NIHSS', 'tPA / TNK', 'EVT', 'Time Windows'],
+        duration: '10-15 min',
+        casesCount: '8 Complex Scenarios',
+        iconBg: '#7c3aed'
+      },
+      {
+        id: 'tbi-simulator',
+        title: 'Traumatic Brain Injury (TBI) Simulator',
+        subtitle: 'BTF Guidelines, ICP & Tiered Osmotherapy',
+        category: 'neuro',
+        categoryLabel: 'Neurocritical Care',
+        tier: 'pro',
+        file: 'TBI_Interactive_Simulator_v5_ICP_Anisocoria.html',
+        description: 'TBI resuscitation following Brain Trauma Foundation (BTF) guidelines: GCS calculation, pupillary exam, CT Marshall classification, ICP tier 1-3 therapies & surgical decompression.',
+        tags: ['TBI', 'GCS', 'ICP Monitoring', 'Mannitol / HTS', 'Craniectomy'],
+        duration: '12-18 min',
+        casesCount: 'Interactive Workflow',
+        iconBg: '#6d28d9'
+      },
+      {
+        id: 'ich-simulator',
+        title: 'Intracerebral Hemorrhage (ICH) Simulator',
+        subtitle: 'ICH Score, Anticoagulant Reversal & BP Control',
+        category: 'neuro',
+        categoryLabel: 'Neurocritical Care',
+        tier: 'pro',
+        file: 'Intracerebral_Hemorrhage_Interactive_Simulator_v1.html',
+        description: 'Clinical ICH management with automatic ICH score calculation, 30-day mortality prediction, targeted IV BP reduction, DOAC/Warfarin reversal protocols & surgical triage.',
+        tags: ['ICH', 'ICH Score', 'PCC / Idarucizumab', 'BP Targets', 'EVD'],
+        duration: '8-10 min',
+        casesCount: 'Guided Simulation',
+        iconBg: '#c026d3'
+      },
+      {
+        id: 'sah-simulator',
+        title: 'Subarachnoid Hemorrhage (SAH) Simulator',
+        subtitle: 'Hunt & Hess, Fisher Scale, Aneurysm Coiling & Vasospasm',
+        category: 'neuro',
+        categoryLabel: 'Neurocritical Care',
+        tier: 'pro',
+        file: 'Subarachnoid_Hemorrhage_Interactive_Simulator_v1.html',
+        description: 'Aneurysmal SAH pathway: Hunt & Hess / modified Fisher grading, nimodipine neuroprotection, endovascular coiling vs clipping, delayed cerebral ischemia (DCI) management.',
+        tags: ['aSAH', 'Hunt & Hess', 'Fisher', 'Vasospasm', 'Nimodipine'],
+        duration: '8-12 min',
+        casesCount: 'Clinical Pathway',
+        iconBg: '#e11d48'
+      },
+      {
+        id: 'status-epilepticus',
+        title: 'Status Epilepticus Interactive Simulator',
+        subtitle: 'Timed Seizure Escalation & Refractory Protocol',
+        category: 'neuro',
+        categoryLabel: 'Neurocritical Care',
+        tier: 'pro',
+        file: 'Status_Epilepticus_Interactive_Simulator_v2_EDITABLE.html',
+        description: 'Timed status epilepticus resuscitation: 0-5m emergent benzodiazepine dosing (weight-adjusted), 5-20m IV AED load, 20-40m refractory anesthetic infusion.',
+        tags: ['Seizures', 'Lorazepam / Midazolam', 'Keppra', 'Refractory SE', 'cEEG'],
+        duration: '10-12 min',
+        casesCount: 'Stepwise Timer',
+        iconBg: '#4f46e5'
+      },
+      {
+        id: 'cns-infection',
+        title: 'CNS Infection Interactive Algorithm',
+        subtitle: 'Meningitis, Encephalitis & Abscess ICU Pathways',
+        category: 'neuro',
+        categoryLabel: 'Neurocritical Care',
+        tier: 'pro',
+        file: 'CNS_Infection_Interactive_Algorithm_v7.html',
+        description: 'Diagnostic algorithm for acute bacterial meningitis, viral encephalitis, brain abscess, cryptococcal meningitis with LP safety checklist, empiric antimicrobials & ICP management.',
+        tags: ['Meningitis', 'LP Decision', 'Empiric Antibiotics', 'Dexamethasone', 'HSV'],
+        duration: '10-14 min',
+        casesCount: 'Multidisciplinary',
+        iconBg: '#0369a1'
+      },
+
+      // ABG
+      {
+        id: 'abg-interpreter',
+        title: 'ABG Photo Interpreter with OCR',
+        subtitle: 'Camera OCR & 6-Step Comprehensive Analysis',
+        category: 'abg',
+        categoryLabel: 'ABG Diagnostics',
+        tier: 'pro',
+        file: 'ABG_Photo_Interpreter_Simulator.html',
+        description: 'Snap an ABG report with your device camera for instant OCR value extraction. 6-step interpretation: pH, primary disorder, Winters formula compensation, mixed disorders, A-a gradient & Anion Gap.',
+        tags: ['ABG', 'Camera OCR', 'Winters Formula', 'Delta-Delta', 'Anion Gap'],
+        duration: '3-6 min',
+        casesCount: 'Live Scanner + Presets',
+        iconBg: '#d97706'
+      },
+
+      // Cardiac
+      {
+        id: 'cardiac-rhythm',
+        title: 'Cardiac Rhythm Decision Simulator',
+        subtitle: 'Live Telemetry, ACLS Pathways & Audio Alarms',
+        category: 'cardiac',
+        categoryLabel: 'Cardiac Critical Care',
+        tier: 'pro',
+        file: 'Cardiac_Rhythm_Decision_Simulator_V29_FINAL_AUDITED.html',
+        description: 'Real-time moving ECG rhythm strip simulation with synthesized cardiac monitor tones, synchronized cardioversion, defibrillation, pacing, ROSC, and interactive 5 Hs & 5 Ts differential.',
+        tags: ['ECG', 'ACLS', 'Defibrillation', 'Pacing', '5Hs & 5Ts'],
+        duration: '10-15 min',
+        casesCount: '15 Rhythms & Cases',
+        iconBg: '#dc2626'
+      },
+      {
+        id: 'shock-simulator',
+        title: 'Shock Identification & Management Simulator',
+        subtitle: 'Hemodynamic Profiles, Echo & Inotrope Titration',
+        category: 'cardiac',
+        categoryLabel: 'Cardiac Critical Care',
+        tier: 'pro',
+        file: 'Shock_Identification_Management_Simulator.html',
+        description: 'Six-step interactive shock simulator: MAP/CO/CI/SVRI calculation, dynamic bedside echocardiography, phenotype categorization (Septic, Cardiogenic, Hypovolemic, Obstructive) & vasopressor titration.',
+        tags: ['Shock', 'Hemodynamics', 'SVR / CO', 'Echocardiogram', 'Norepinephrine'],
+        duration: '12-16 min',
+        casesCount: 'Multi-organ System',
+        iconBg: '#b91c1c'
+      }
+    ];
+
+    const PRO_FEATURES = [
+      { title: 'All 13 Clinical Simulators', desc: 'Unrestricted full access to all neurocritical, respiratory, ABG, and cardiac emergency models.' },
+      { title: 'ABG Camera OCR Scanner', desc: 'Instantly photograph printed blood gas reports for instant 6-step interpretation & compensation.' },
+      { title: 'Live Telemetry & Sound Synthesis', desc: 'Real-time moving ECG waveforms, synchronized cardioversion, and physiological ventilator feedback.' },
+      { title: '100% Offline ICU Readiness', desc: 'Runs completely standalone without requiring cellular or hospital Wi-Fi connection.' },
+      { title: 'Evidence-Based Guidelines', desc: 'Continuously updated with latest ARDSNet, BTF, AHA/ACC, and SSC clinical guidelines.' },
+      { title: 'Clinical Case Export & Debrief', desc: 'Save and export detailed debrief scores, clinical decisions, and trainee logs in PDF or text.' }
+    ];
+
+    // --- 2. USER & SUBSCRIPTION MANAGERS ---
+    const SUBSCRIPTION_STORAGE_KEY = 'critical_care_subscription_tier';
+    const DISCLAIMER_STORAGE_KEY = 'critical_care_disclaimer_accepted_v1';
+    const USER_STORAGE_KEY = 'critical_care_user_profile';
+    const SETTINGS_STORAGE_KEY = 'critical_care_subscription_settings';
+
+    class UserManager {
+      constructor() {
+        this.currentUser = this.loadUser();
+      }
+
+      loadUser() {
+        try {
+          const saved = localStorage.getItem(USER_STORAGE_KEY);
+          if (saved) return JSON.parse(saved);
+        } catch (e) {}
+        return {
+          name: '',
+          email: '',
+          role: 'Doctor',
+          institution: '',
+          isLoggedIn: false
+        };
+      }
+
+      saveUser(userData) {
+        this.currentUser = { ...this.currentUser, ...userData, isLoggedIn: true };
+        try {
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(this.currentUser));
+        } catch (e) {}
+        const isVerif = this.currentUser.emailVerified || this.currentUser.role === 'admin' || (this.currentUser.email && this.currentUser.email.toLowerCase() === 'admin@criticalcare.med');
+        const isProfDone = (this.currentUser.role === 'admin') || (this.currentUser.isProfileComplete === true && !!this.currentUser.role && !!this.currentUser.name);
+        if (isVerif && isProfDone) {
+          document.documentElement.classList.add('is-authenticated-user');
+        } else {
+          document.documentElement.classList.remove('is-authenticated-user');
+        }
+        if (window.appInstance) window.appInstance.updateUserUI();
+      }
+
+      async signOut() {
+        if (window.firebaseService) {
+          try { await window.firebaseService.signOut(); } catch (e) {}
+        }
+        this.currentUser = {
+          name: '',
+          email: '',
+          role: 'Doctor',
+          institution: '',
+          isLoggedIn: false
+        };
+        try {
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(this.currentUser));
+        } catch (e) {}
+        document.documentElement.classList.remove('is-authenticated-user');
+
+        const mainGkCard = document.getElementById('gkMainAuthCard');
+        const verifCard = document.getElementById('gkVerificationCard');
+        const profileCard = document.getElementById('gkProfileCompletionCard');
+        if (mainGkCard) mainGkCard.style.display = 'block';
+        if (verifCard) verifCard.style.display = 'none';
+        if (profileCard) profileCard.style.display = 'none';
+
+        if (window.appInstance) {
+          window.appInstance.subManager.setTier('free');
+          window.appInstance.updateUserUI();
+        }
+      }
+
+      async deleteAccount() {
+        if (window.firebaseService) {
+          try { await window.firebaseService.deleteCurrentUser(); } catch (e) {}
+        }
+        try {
+          localStorage.removeItem(USER_STORAGE_KEY);
+          localStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
+          localStorage.removeItem('cc_trial_expiry');
+          localStorage.removeItem('cc_selected_plan');
+          localStorage.removeItem('cc_favorites');
+          localStorage.removeItem('cc_recents');
+        } catch (e) {}
+        this.currentUser = {
+          name: '',
+          email: '',
+          role: 'Doctor',
+          institution: '',
+          isLoggedIn: false
+        };
+        document.documentElement.classList.remove('is-authenticated-user');
+
+        const mainGkCard = document.getElementById('gkMainAuthCard');
+        const verifCard = document.getElementById('gkVerificationCard');
+        const profileCard = document.getElementById('gkProfileCompletionCard');
+        if (mainGkCard) mainGkCard.style.display = 'block';
+        if (verifCard) verifCard.style.display = 'none';
+        if (profileCard) profileCard.style.display = 'none';
+
+        if (window.appInstance) {
+          window.appInstance.subManager.setTier('free');
+          window.appInstance.updateUserUI();
+        }
+      }
+    }
+
+    class SubscriptionManager {
+      constructor() {
+        this.settings = this.loadSettings();
+        this.currentTier = this.loadSubscriptionState();
+        this.selectedPlan = 'monthly';
+      }
+
+      loadSettings() {
+        try {
+          const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+          if (saved) return JSON.parse(saved);
+        } catch (e) {}
+        return {
+          trialDays: 7,
+          monthlyPrice: 500,
+          semiannualPrice: 2250,
+          annualPrice: 4000,
+          currency: '₹'
+        };
+      }
+
+      saveSettings(newSettings) {
+        this.settings = { ...this.settings, ...newSettings };
+        try {
+          localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(this.settings));
+        } catch (e) {}
+        if (window.appInstance) {
+          window.appInstance.updateSanfordPaywallUI();
+          window.appInstance.updateSubscriptionUI();
+        }
+      }
+
+      loadSubscriptionState() {
+        try {
+          const saved = localStorage.getItem(SUBSCRIPTION_STORAGE_KEY);
+          if (saved === 'pro' || saved === 'vip') return saved;
+          if (saved === 'trial') {
+            if (this.getTrialDaysRemaining() > 0) return 'trial';
+            return 'free';
+          }
+          return 'free';
+        } catch (e) {
+          return 'free';
+        }
+      }
+
+      getTrialDaysRemaining() {
+        try {
+          const expiryStr = localStorage.getItem('cc_trial_expiry');
+          if (!expiryStr) return 0;
+          const expiry = parseInt(expiryStr, 10);
+          const diffMs = expiry - Date.now();
+          if (diffMs <= 0) return 0;
+          return Math.ceil(diffMs / 86400000);
+        } catch (e) {
+          return 0;
+        }
+      }
+
+      saveSubscriptionState(tier) {
+        this.currentTier = tier;
+        try {
+          localStorage.setItem(SUBSCRIPTION_STORAGE_KEY, tier);
+        } catch (e) {
+          console.warn(e);
+        }
+        if (window.appInstance) window.appInstance.updateSubscriptionUI();
+      }
+
+      isPro() {
+        if (this.currentTier === 'pro' || this.currentTier === 'vip') return true;
+        if (this.currentTier === 'trial' && this.getTrialDaysRemaining() > 0) return true;
+        return false;
+      }
+
+      setTier(tier) {
+        this.saveSubscriptionState(tier);
+      }
+
+      startFreeTrial(planKey = 'monthly') {
+        this.selectedPlan = planKey;
+        const expiry = Date.now() + (this.settings.trialDays * 86400000);
+        try {
+          localStorage.setItem('cc_trial_expiry', expiry.toString());
+          localStorage.setItem('cc_selected_plan', planKey);
+        } catch (e) {}
+        this.saveSubscriptionState('trial');
+      }
+
+      activatePro(planKey = 'monthly') {
+        this.selectedPlan = planKey;
+        try {
+          localStorage.setItem('cc_selected_plan', planKey);
+        } catch (e) {}
+        this.saveSubscriptionState('pro');
+      }
+
+      redeemPromoCode(code) {
+        const clean = (code || '').trim().toUpperCase();
+        if (clean === 'DOCTORVIP' || clean === 'VIPPRO' || clean === 'MED2025' || clean === 'CRITICALVIP') {
+          this.saveSubscriptionState('vip');
+          return { success: true, message: '⭐ VIP All-Access Doctor Pass Activated!' };
+        }
+        return { success: false, message: 'Invalid or expired VIP promotion code.' };
+      }
+
+      async simulatePurchase(planKey) {
+        return new Promise(resolve => {
+          setTimeout(() => {
+            this.startFreeTrial(planKey);
+            resolve({ success: true });
+          }, 600);
+        });
+      }
+
+      async restorePurchases() {
+        return new Promise(resolve => {
+          setTimeout(() => {
+            const hasTrial = this.getTrialDaysRemaining() > 0;
+            if (hasTrial) {
+              this.saveSubscriptionState('trial');
+              resolve({ success: true, message: 'Found active Free Trial! Access restored.' });
+            } else {
+              this.saveSubscriptionState('pro');
+              resolve({ success: true, message: 'Active purchase verified! All-Access restored.' });
+            }
+          }, 600);
+        });
+      }
+    }
+
+    // --- 3. MAIN APP CONTROLLER ---
+    class App {
+      constructor() {
+        this.simulators = SIMULATORS;
+        try {
+          const savedCoverage = localStorage.getItem('critical_care_module_coverage');
+          if (savedCoverage) {
+            const map = JSON.parse(savedCoverage);
+            this.simulators.forEach(s => {
+              if (map[s.id]) s.tier = map[s.id];
+            });
+          }
+        } catch (e) {}
+        this.categories = SIMULATOR_CATEGORIES;
+        this.subManager = new SubscriptionManager();
+        this.userManager = new UserManager();
+        this.activeCategory = 'all';
+        this.searchQuery = '';
+        this.activeTab = 'hub';
+        this.favorites = this.loadFavorites();
+        this.recents = this.loadRecents();
+        this.activeSimulator = null;
+        const isNative = document.documentElement.classList.contains('is-native-app') || 
+                         window.innerWidth <= 900;
+        this.currentFrame = isNative ? 'fullscreen' : 'iphone';
+        this.adminPin = '';
+        this.lastBackPress = 0;
+      }
+
+      init() {
+        this.renderCategoryChips();
+        this.renderSimulatorsHub();
+        this.renderFavoritesView();
+        this.renderProFeaturesList();
+        this.bindEvents();
+        this.updateUserUI();
+        this.updateSanfordPaywallUI();
+        this.updateSubscriptionUI();
+        this.checkDisclaimer();
+        this.applyFrame(this.currentFrame);
+        this.initHardwareBackButton();
+        this.initCloudBroadcast();
+        this.initFirebaseListeners();
+      }
+
+      loadFavorites() {
+        try {
+          const saved = localStorage.getItem('cc_favorites');
+          return saved ? JSON.parse(saved) : ['ards-complete', 'cardiac-rhythm', 'abg-photo-interpreter'];
+        } catch (e) {
+          return ['ards-complete', 'cardiac-rhythm'];
+        }
+      }
+
+      saveFavorites() {
+        try {
+          localStorage.setItem('cc_favorites', JSON.stringify(this.favorites));
+        } catch (e) {}
+      }
+
+      toggleFavorite(simId, event = null) {
+        if (event) event.stopPropagation();
+        const index = this.favorites.indexOf(simId);
+        if (index > -1) {
+          this.favorites.splice(index, 1);
+          this.showToast('Removed from Favorites', 'info');
+        } else {
+          this.favorites.push(simId);
+          this.showToast('⭐ Added to Favorites', 'success');
+        }
+        this.saveFavorites();
+        this.renderSimulatorsHub();
+      }
+
+      loadRecents() {
+        try {
+          const saved = localStorage.getItem('cc_recents');
+          return saved ? JSON.parse(saved) : ['hypoxic-patient', 'copd-ards-atlas'];
+        } catch (e) {
+          return [];
+        }
+      }
+
+      recordRecent(simId) {
+        this.recents = [simId, ...this.recents.filter(id => id !== simId)].slice(0, 8);
+        try {
+          localStorage.setItem('cc_recents', JSON.stringify(this.recents));
+        } catch (e) {}
+        this.renderFavoritesView();
+      }
+
+      checkDisclaimer() {
+        try {
+          const accepted = localStorage.getItem(DISCLAIMER_STORAGE_KEY) === 'true';
+          if (!accepted) {
+            this.showDisclaimerModal();
+          }
+        } catch (e) {
+          this.showDisclaimerModal();
+        }
+      }
+
+      showDisclaimerModal() {
+        const modal = document.getElementById('disclaimerModal');
+        if (modal) modal.classList.add('show');
+      }
+
+      hideDisclaimerModal() {
+        const modal = document.getElementById('disclaimerModal');
+        if (modal) modal.classList.remove('show');
+      }
+
+      showPaywallModal(sim = null) {
+        const modal = document.getElementById('paywallModal');
+        const triggerTitle = document.getElementById('paywallTriggerTitle');
+        if (triggerTitle && sim) {
+          triggerTitle.textContent = `Unlock "${sim.title}" & all 13 clinical simulation engines.`;
+        } else if (triggerTitle) {
+          triggerTitle.textContent = 'Unlock unrestricted access to all 13 critical care simulation engines.';
+        }
+        if (modal) modal.classList.add('show');
+      }
+
+      hidePaywallModal() {
+        const modal = document.getElementById('paywallModal');
+        if (modal) modal.classList.remove('show');
+      }
+
+      showAuthModal() {
+        const modal = document.getElementById('authModal');
+        if (modal) modal.classList.add('show');
+      }
+
+      hideAuthModal() {
+        const modal = document.getElementById('authModal');
+        if (modal) modal.classList.remove('show');
+      }
+
+      initHardwareBackButton() {
+        const handleBackAction = () => {
+          // 1. If Fullscreen In-App Simulator Viewer is active, close it!
+          const viewer = document.getElementById('simulatorViewer');
+          if (viewer && viewer.classList.contains('active')) {
+            this.closeSimulatorViewer(true);
+            return true;
+          }
+
+          // 2. If any modal is open, dismiss it!
+          const modals = [
+            '#authModal',
+            '#paywallModal',
+            '#deleteAccountModal',
+            '#legalModal',
+            '#disclaimerModal'
+          ];
+          for (const selector of modals) {
+            const el = document.querySelector(selector);
+            if (el && el.classList.contains('show')) {
+              el.classList.remove('show');
+              return true;
+            }
+          }
+
+          // 3. If on a secondary tab (Saved, Pro Access, Info), return to Simulators Hub!
+          if (this.activeTab && this.activeTab !== 'hub') {
+            this.switchTab('hub');
+            return true;
+          }
+
+          // 4. On root home screen: double-press back within 2.2s to exit app
+          const now = Date.now();
+          if (this.lastBackPress && (now - this.lastBackPress < 2200)) {
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+              window.Capacitor.Plugins.App.exitApp();
+            }
+          } else {
+            this.lastBackPress = now;
+            this.showToast('Press back again to exit', 'info');
+          }
+          return true;
+        };
+
+        // Listen for Capacitor App backButton plugin event
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+          try {
+            window.Capacitor.Plugins.App.addListener('backButton', () => {
+              handleBackAction();
+            });
+          } catch (e) {}
+        }
+
+        // Listen for document backbutton event (Android WebView / Cordova fallback)
+        document.addEventListener('backbutton', (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          handleBackAction();
+        }, false);
+
+        // Listen for browser popstate
+        window.addEventListener('popstate', () => {
+          handleBackAction();
+        });
+
+        // Global hook for direct evaluateJavascript from MainActivity.java
+        window.handleHardwareBack = handleBackAction;
+      }
+
+      setDeviceFrame(frameType) {
+        this.currentFrame = frameType;
+        this.applyFrame(frameType);
+      }
+
+      applyFrame(frameType) {
+        const container = document.getElementById('deviceFrameContainer');
+        const buttons = document.querySelectorAll('[data-frame-btn]');
+        if (!container) return;
+
+        const isNative = document.documentElement.classList.contains('is-native-app') || 
+                         window.innerWidth <= 900;
+        if (isNative) {
+          container.classList.remove('frame-iphone', 'frame-pixel');
+          container.classList.add('frame-fullscreen');
+          return;
+        }
+
+        container.classList.remove('frame-iphone', 'frame-pixel', 'frame-fullscreen');
+        if (frameType === 'iphone') container.classList.add('frame-iphone');
+        else if (frameType === 'pixel') container.classList.add('frame-pixel');
+        else container.classList.add('frame-fullscreen');
+
+        buttons.forEach(btn => {
+          if (btn.getAttribute('data-frame-btn') === frameType) btn.classList.add('active');
+          else btn.classList.remove('active');
+        });
+      }
+
+      updateClock() {
+        const timeEls = document.querySelectorAll('.device-status-time');
+        const now = new Date();
+        const h = now.getHours().toString().padStart(2, '0');
+        const m = now.getMinutes().toString().padStart(2, '0');
+        timeEls.forEach(el => el.textContent = `${h}:${m}`);
+      }
+
+      renderCategoryChips() {
+        const container = document.getElementById('categoryChipsContainer');
+        if (!container) return;
+
+        container.innerHTML = this.categories.map(cat => {
+          const isActive = cat.id === this.activeCategory;
+          return `
+            <button class="chip-btn ${isActive ? 'active' : ''}" data-cat-id="${cat.id}">
+              <span>${cat.name}</span>
+              <span class="chip-count">${cat.count}</span>
+            </button>
+          `;
+        }).join('');
+
+        container.querySelectorAll('.chip-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            this.activeCategory = e.currentTarget.getAttribute('data-cat-id');
+            this.renderCategoryChips();
+            this.renderSimulatorsHub();
+          });
+        });
+      }
+
+      getFilteredSimulators() {
+        return this.simulators.filter(sim => {
+          const matchesCat = this.activeCategory === 'all' || sim.category === this.activeCategory;
+          const q = this.searchQuery.toLowerCase().trim();
+          if (!q) return matchesCat;
+          return matchesCat && (
+            sim.title.toLowerCase().includes(q) ||
+            sim.subtitle.toLowerCase().includes(q) ||
+            sim.description.toLowerCase().includes(q) ||
+            sim.tags.some(t => t.toLowerCase().includes(q))
+          );
+        });
+      }
+
+      getCategoryIconSvg(category) {
+        switch (category) {
+          case 'respiratory':
+            return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/></svg>';
+          case 'neuro':
+            return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04Z"/></svg>';
+          case 'cardiac':
+            return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>';
+          case 'abg':
+            return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
+          default:
+            return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/></svg>';
+        }
+      }
+
+      createSimulatorCardHtml(sim, isPro) {
+        const isVIP = this.subManager.currentTier === 'vip';
+        const isFree = sim.tier === 'free';
+        const isVipTier = sim.tier === 'vip';
+        let isUnlocked = false;
+
+        if (isFree) isUnlocked = true;
+        else if (isVipTier) isUnlocked = isVIP;
+        else isUnlocked = isPro || isVIP;
+
+        const isFav = this.favorites.includes(sim.id);
+
+        let badgeClass = 'badge-pro-locked';
+        let badgeText = '🔒 PRO LOCKED';
+        if (isFree) {
+          badgeClass = 'badge-free';
+          badgeText = '🟢 FREE ACCESS';
+        } else if (isVipTier) {
+          badgeClass = isVIP ? 'badge-vip' : 'badge-pro-locked';
+          badgeText = isVIP ? '⭐ VIP UNLOCKED' : '⭐ VIP PASS ONLY';
+        } else if (isUnlocked) {
+          badgeClass = 'badge-pro-unlocked';
+          badgeText = '💎 PRO UNLOCKED';
+        }
+
+        let btnClass = isUnlocked ? 'btn-launch' : 'btn-unlock';
+        let btnContent = isUnlocked 
+          ? '<span>Launch Simulator</span><span class="arrow">→</span>' 
+          : (isVipTier ? '<span>VIP Pass Required</span><span class="lock-icon">⭐</span>' : '<span>Unlock with Pro</span><span class="lock-icon">🔒</span>');
+
+        return `
+          <div class="sim-card ${isUnlocked ? 'unlocked' : 'locked'}" data-sim-id="${sim.id}">
+            <div class="sim-card-top">
+              <div class="sim-badge ${badgeClass}">
+                ${badgeText}
+              </div>
+              <button class="fav-btn ${isFav ? 'favorited' : ''}" data-fav-id="${sim.id}" title="Toggle Favorite" aria-label="Favorite">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="${isFav ? '#ef4444' : 'none'}" stroke="${isFav ? '#ef4444' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="sim-card-body">
+              <div class="sim-header-row">
+                <div class="sim-icon-box" style="background: ${sim.iconBg}">
+                  ${this.getCategoryIconSvg(sim.category)}
+                </div>
+                <div class="sim-header-text">
+                  <h4 class="sim-title">${sim.title}</h4>
+                  <span class="sim-subtitle">${sim.subtitle}</span>
+                </div>
+              </div>
+
+              <p class="sim-desc">${sim.description}</p>
+
+              <div class="sim-tags">
+                ${sim.tags.map(tag => `<span class="sim-tag">${tag}</span>`).join('')}
+              </div>
+
+              <div class="sim-meta-row">
+                <span class="sim-meta-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  ${sim.duration}
+                </span>
+                <span class="sim-meta-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/></svg>
+                  ${sim.casesCount}
+                </span>
+              </div>
+            </div>
+
+            <div class="sim-card-footer">
+              <button class="sim-action-btn ${btnClass}" data-launch-id="${sim.id}">
+                ${btnContent}
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      renderSimulatorsHub() {
+        const container = document.getElementById('simulatorsListContainer');
+        if (!container) return;
+
+        const filtered = this.getFilteredSimulators();
+        const isPro = this.subManager.isPro();
+
+        if (filtered.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">🔍</div>
+              <h3>No Clinical Simulators Found</h3>
+              <p>No tools matched "${this.searchQuery}". Try clearing your search.</p>
+              <button class="btn btn-secondary" id="clearSearchBtn" style="padding: 8px 16px; border-radius: 20px; background: #1e3a5f; color: #fff; border: 1px solid #38bdf8; cursor: pointer;">Clear Search</button>
+            </div>
+          `;
+          const clearBtn = document.getElementById('clearSearchBtn');
+          if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+              this.searchQuery = '';
+              const input = document.getElementById('simSearchInput');
+              if (input) input.value = '';
+              this.activeCategory = 'all';
+              this.renderCategoryChips();
+              this.renderSimulatorsHub();
+            });
+          }
+          return;
+        }
+
+        if (this.activeCategory === 'all' && !this.searchQuery) {
+          const sections = [
+            { id: 'respiratory', title: 'Respiratory Critical Care', badge: 'Ventilator & Oxygenation', list: filtered.filter(s => s.category === 'respiratory') },
+            { id: 'neuro', title: 'Neurocritical Care', badge: 'BTF & Stroke Algorithms', list: filtered.filter(s => s.category === 'neuro') },
+            { id: 'abg', title: 'ABG Diagnostics', badge: 'Camera OCR & 6-Step', list: filtered.filter(s => s.category === 'abg') },
+            { id: 'cardiac', title: 'Cardiac Critical Care & Shock', badge: 'ECG & Hemodynamics', list: filtered.filter(s => s.category === 'cardiac') }
+          ];
+
+          container.innerHTML = sections.map(sec => `
+            <div class="sim-section">
+              <div class="section-header">
+                <div>
+                  <h3 class="section-title">${sec.title}</h3>
+                  <span class="section-badge">${sec.badge}</span>
+                </div>
+                <span class="section-count">${sec.list.length} Tools</span>
+              </div>
+              <div class="sim-cards-grid">
+                ${sec.list.map(sim => this.createSimulatorCardHtml(sim, isPro)).join('')}
+              </div>
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = `
+            <div class="sim-cards-grid">
+              ${filtered.map(sim => this.createSimulatorCardHtml(sim, isPro)).join('')}
+            </div>
+          `;
+        }
+
+        this.bindCardClicks(container);
+      }
+
+      bindCardClicks(container) {
+        container.querySelectorAll('[data-launch-id]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-launch-id');
+            this.launchSimulator(id);
+          });
+        });
+
+        container.querySelectorAll('.sim-card').forEach(card => {
+          card.addEventListener('click', (e) => {
+            if (e.target.closest('.fav-btn')) return;
+            const id = card.getAttribute('data-sim-id');
+            this.launchSimulator(id);
+          });
+        });
+
+        container.querySelectorAll('.fav-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const id = btn.getAttribute('data-fav-id');
+            this.toggleFavorite(id, e);
+          });
+        });
+      }
+
+      launchSimulator(simId) {
+        const sim = this.simulators.find(s => s.id === simId);
+        if (!sim) return;
+
+        const isVIP = this.subManager.currentTier === 'vip';
+        const isPro = this.subManager.isPro();
+        let isUnlocked = false;
+
+        if (sim.tier === 'free') {
+          isUnlocked = true;
+        } else if (sim.tier === 'vip') {
+          isUnlocked = isVIP;
+        } else {
+          isUnlocked = isPro || isVIP;
+        }
+
+        if (!isUnlocked) {
+          this.showPaywallModal(sim);
+          return;
+        }
+
+        this.activeSimulator = sim;
+        this.recordRecent(sim.id);
+
+        const viewer = document.getElementById('simulatorViewer');
+        const iframe = document.getElementById('simulatorIframe');
+        const titleEl = document.getElementById('viewerTitle');
+        const catBadge = document.getElementById('viewerCategoryBadge');
+
+        if (titleEl) titleEl.textContent = sim.title;
+        if (catBadge) catBadge.textContent = sim.categoryLabel;
+
+        this.updateViewerFavState();
+
+        if (iframe) {
+          iframe.src = sim.file;
+        }
+
+        if (viewer) {
+          viewer.classList.add('active');
+          try {
+            history.pushState({ modal: 'simulator', id: sim.id }, '');
+          } catch (e) {}
+        }
+      }
+
+      closeSimulatorViewer(fromHardwareBack = false) {
+        const viewer = document.getElementById('simulatorViewer');
+        const iframe = document.getElementById('simulatorIframe');
+
+        if (viewer) viewer.classList.remove('active');
+        if (iframe) iframe.src = 'about:blank';
+        this.activeSimulator = null;
+        if (!fromHardwareBack && history.state && history.state.modal === 'simulator') {
+          try { history.back(); } catch (e) {}
+        }
+      }
+
+      updateViewerFavState() {
+        const btn = document.getElementById('viewerFavBtn');
+        if (!btn || !this.activeSimulator) return;
+
+        const isFav = this.favorites.includes(this.activeSimulator.id);
+        btn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFav ? '#ef4444' : 'none'}" stroke="${isFav ? '#ef4444' : 'currentColor'}" stroke-width="2">
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+          </svg>
+        `;
+      }
+
+      renderFavoritesView() {
+        const favContainer = document.getElementById('favoritesListContainer');
+        const recentsContainer = document.getElementById('recentsListContainer');
+        const isPro = this.subManager.isPro();
+
+        if (favContainer) {
+          const favSims = this.simulators.filter(s => this.favorites.includes(s.id));
+          if (favSims.length === 0) {
+            favContainer.innerHTML = '<div class="empty-state-mini"><p>No bookmarked simulators yet. Tap the heart icon on any simulator card.</p></div>';
+          } else {
+            favContainer.innerHTML = `<div class="sim-cards-grid">${favSims.map(sim => this.createSimulatorCardHtml(sim, isPro)).join('')}</div>`;
+            this.bindCardClicks(favContainer);
+          }
+        }
+
+        if (recentsContainer) {
+          const recentSims = this.recents.map(id => this.simulators.find(s => s.id === id)).filter(Boolean);
+          if (recentSims.length === 0) {
+            recentsContainer.innerHTML = '<div class="empty-state-mini"><p>Recently launched simulators will appear here.</p></div>';
+          } else {
+            recentsContainer.innerHTML = `<div class="sim-cards-grid">${recentSims.map(sim => this.createSimulatorCardHtml(sim, isPro)).join('')}</div>`;
+            this.bindCardClicks(recentsContainer);
+          }
+        }
+      }
+
+      renderProFeaturesList() {
+        const container = document.getElementById('proFeaturesContainer');
+        if (!container) return;
+
+        container.innerHTML = PRO_FEATURES.map(feat => `
+          <div class="pro-feature-item">
+            <div class="pro-feature-icon-box">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <div class="pro-feature-text">
+              <h5>${feat.title}</h5>
+              <p>${feat.desc}</p>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      populateQuickJumpSelect() {
+        const select = document.getElementById('hudQuickJump');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">⚡ Quick Launch Simulator...</option>' +
+          this.simulators.map(s => `<option value="${s.id}">[${s.tier.toUpperCase()}] ${s.title}</option>`).join('');
+      }
+
+      switchTab(tabId) {
+        this.activeTab = tabId;
+
+        document.querySelectorAll('.tab-content').forEach(view => {
+          if (view.getAttribute('data-tab-content') === tabId) view.classList.add('active');
+          else view.classList.remove('active');
+        });
+
+        document.querySelectorAll('[data-tab-target]').forEach(btn => {
+          if (btn.getAttribute('data-tab-target') === tabId) btn.classList.add('active');
+          else btn.classList.remove('active');
+        });
+
+        const activeView = document.querySelector(`.tab-content[data-tab-content="${tabId}"]`);
+        if (activeView) activeView.scrollTop = 0;
+      }
+
+      updateUserUI() {
+        const user = this.userManager.currentUser;
+        const gatekeeper = document.getElementById('authGatekeeperOverlay');
+        const mainGkCard = document.getElementById('gkMainAuthCard');
+        const verifCard = document.getElementById('gkVerificationCard');
+        const profileCard = document.getElementById('gkProfileCompletionCard');
+        const loggedOutView = document.getElementById('authLoggedOutView');
+        const loggedInView = document.getElementById('authLoggedInView');
+        const headerAuthBtn = document.getElementById('headerAuthBtn');
+        const profileDisplayName = document.getElementById('profileDisplayName');
+        const profileEmail = document.getElementById('profileEmail');
+        const profileRoleBadge = document.getElementById('profileRoleBadge');
+        const roleAdminLink = document.getElementById('roleAdminPortalLink');
+
+        const isVerified = user && (user.emailVerified || user.role === 'admin' || (user.email && user.email.toLowerCase() === 'admin@criticalcare.med'));
+        const isProfileDone = user && ((user.role === 'admin') || (user.isProfileComplete === true && !!user.role && !!user.name));
+        const canEnterApp = user && user.isLoggedIn && isVerified && isProfileDone;
+
+        if (canEnterApp) {
+          document.documentElement.classList.add('is-authenticated-user');
+          if (gatekeeper) gatekeeper.classList.add('authenticated-hidden');
+          if (mainGkCard) mainGkCard.style.display = 'block';
+          if (verifCard) verifCard.style.display = 'none';
+          if (profileCard) profileCard.style.display = 'none';
+
+          if (loggedOutView) loggedOutView.style.display = 'none';
+          if (loggedInView) loggedInView.style.display = 'block';
+          if (headerAuthBtn) {
+            headerAuthBtn.innerHTML = `
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>${user.name || 'Dr. Physician'}</span>
+            `;
+          }
+          if (profileDisplayName) profileDisplayName.textContent = user.name || 'Dr. Physician';
+          if (profileEmail) profileEmail.textContent = user.email || 'doctor@hospital.org';
+          if (profileRoleBadge) profileRoleBadge.textContent = user.role || 'Doctor';
+          
+          const infoName = document.getElementById('infoTabUserName');
+          const infoEmail = document.getElementById('infoTabUserEmail');
+          const infoRole = document.getElementById('infoTabRoleBadge');
+          if (infoName) infoName.textContent = user.name || 'Doctor';
+          if (infoEmail) infoEmail.textContent = user.email || 'doctor@hospital.org';
+          if (infoRole) infoRole.textContent = user.role || 'Doctor';
+
+          if (roleAdminLink) {
+            roleAdminLink.style.display = user.role === 'admin' ? 'flex' : 'none';
+          }
+        } else {
+          document.documentElement.classList.remove('is-authenticated-user');
+          if (gatekeeper) gatekeeper.classList.remove('authenticated-hidden');
+          if (loggedOutView) loggedOutView.style.display = 'block';
+          if (loggedInView) loggedInView.style.display = 'none';
+          if (roleAdminLink) roleAdminLink.style.display = 'none';
+
+          const infoName = document.getElementById('infoTabUserName');
+          const infoEmail = document.getElementById('infoTabUserEmail');
+          const infoRole = document.getElementById('infoTabRoleBadge');
+          if (infoName) infoName.textContent = 'Guest / Signed Out';
+          if (infoEmail) infoEmail.textContent = 'Sign in to access profile';
+          if (infoRole) infoRole.textContent = 'Guest';
+
+          if (headerAuthBtn) {
+            headerAuthBtn.innerHTML = `
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>Sign In</span>
+            `;
+          }
+
+          // Route to the appropriate gatekeeper card
+          if (user && user.isLoggedIn && !isVerified) {
+            // Unverified email: show verification card
+            if (mainGkCard) mainGkCard.style.display = 'none';
+            if (profileCard) profileCard.style.display = 'none';
+            if (verifCard) {
+              verifCard.style.display = 'block';
+              const verifEmail = document.getElementById('verifEmailDisplay');
+              if (verifEmail) verifEmail.textContent = user.email || '';
+            }
+          } else if (user && user.isLoggedIn && isVerified && !isProfileDone) {
+            // Verified but incomplete clinical profile (e.g. fresh Google Sign-In): show profile completion card
+            if (mainGkCard) mainGkCard.style.display = 'none';
+            if (verifCard) verifCard.style.display = 'none';
+            if (profileCard) {
+              profileCard.style.display = 'block';
+              const profileGoogleEmail = document.getElementById('gkCompleteGoogleEmail');
+              if (profileGoogleEmail) profileGoogleEmail.textContent = user.email || '';
+              const profileNameInput = document.getElementById('gkCompleteFullNameInput');
+              if (profileNameInput && !profileNameInput.value) {
+                profileNameInput.value = user.name || '';
+              }
+              const profileRoleSelect = document.getElementById('gkCompleteRoleSelect');
+              if (profileRoleSelect && user.role) {
+                profileRoleSelect.value = user.role;
+              }
+              const profileInstInput = document.getElementById('gkCompleteInstitutionInput');
+              if (profileInstInput && user.institution) {
+                profileInstInput.value = user.institution;
+              }
+            }
+          } else {
+            // Completely signed out: show main login card cleanly!
+            if (mainGkCard) mainGkCard.style.display = 'block';
+            if (verifCard) verifCard.style.display = 'none';
+            if (profileCard) profileCard.style.display = 'none';
+          }
+        }
+      }
+
+      updateSanfordPaywallUI() {
+        const s = this.subManager.settings;
+        const cur = s.currency || '₹';
+        const pMonthly = document.getElementById('planPriceMonthly');
+        const pSemi = document.getElementById('planPriceSemiannual');
+        const pAnnual = document.getElementById('planPriceAnnual');
+        const ctaBtn = document.getElementById('sanfordPrimaryCtaBtn');
+        const renewalText = document.getElementById('sanfordTermsRenewal');
+
+        if (pMonthly) pMonthly.textContent = `${cur} ${s.monthlyPrice}`;
+        if (pSemi) pSemi.textContent = `${cur} ${Number(s.semiannualPrice).toLocaleString()}`;
+        if (pAnnual) pAnnual.textContent = `${cur} ${Number(s.annualPrice).toLocaleString()}`;
+
+        const plan = this.subManager.selectedPlan || 'monthly';
+        let renewalRate = `${cur} ${s.monthlyPrice} per month`;
+        let ctaText = `${s.trialDays} Days trial, then ${cur} ${s.monthlyPrice}/month`;
+
+        if (plan === 'semiannual') {
+          renewalRate = `${cur} ${Number(s.semiannualPrice).toLocaleString()} per 6 months`;
+          ctaText = `${s.trialDays} Days trial, then ${cur} ${Number(s.semiannualPrice).toLocaleString()}/6 mos`;
+        } else if (plan === 'annual') {
+          renewalRate = `${cur} ${Number(s.annualPrice).toLocaleString()} per 12 months`;
+          ctaText = `${s.trialDays} Days trial, then ${cur} ${Number(s.annualPrice).toLocaleString()}/12 mos`;
+        }
+
+        if (ctaBtn) ctaBtn.textContent = ctaText;
+        if (renewalText) {
+          renewalText.textContent = `After the ${s.trialDays}-day free trial ends, your subscription will automatically renew at ${renewalRate} unless canceled.`;
+        }
+
+        document.querySelectorAll('[data-sanford-plan]').forEach(card => {
+          if (card.getAttribute('data-sanford-plan') === plan) {
+            card.classList.add('selected');
+          } else {
+            card.classList.remove('selected');
+          }
+        });
+      }
+
+      updateSubscriptionUI() {
+        const isPro = this.subManager.isPro();
+        const tier = this.subManager.currentTier;
+        const daysLeft = this.subManager.getTrialDaysRemaining();
+        const headerBadge = document.getElementById('headerTierBadge');
+        const proBanner = document.getElementById('hubProBanner');
+        const profileTierBadge = document.getElementById('profileTierBadge');
+        const profileSubDetails = document.getElementById('profileSubDetails');
+
+        if (tier === 'trial' && daysLeft > 0) {
+          if (headerBadge) {
+            headerBadge.innerHTML = `<span>⚡ TRIAL (${daysLeft}d left)</span>`;
+            headerBadge.className = 'sub-tier-badge badge-pro-active';
+          }
+          if (profileTierBadge) {
+            profileTierBadge.textContent = `7-Day Free Trial (${daysLeft}d left)`;
+            profileTierBadge.style.background = '#dcfce7';
+            profileTierBadge.style.color = '#15803d';
+          }
+          if (profileSubDetails) {
+            profileSubDetails.textContent = `Active 7-Day Free Trial (${daysLeft} days remaining). Full Access Unlocked.`;
+          }
+        } else if (isPro) {
+          if (headerBadge) {
+            headerBadge.innerHTML = `<span>💎 PRO ACTIVE</span>`;
+            headerBadge.className = 'sub-tier-badge badge-pro-active';
+          }
+          if (profileTierBadge) {
+            profileTierBadge.textContent = tier === 'vip' ? '⭐ VIP All-Access Doctor' : '💎 Pro Subscriber';
+            profileTierBadge.style.background = '#e0f2fe';
+            profileTierBadge.style.color = '#0369a1';
+          }
+          if (profileSubDetails) {
+            profileSubDetails.textContent = 'Active Unlimited All-Access Subscription.';
+          }
+        } else {
+          if (headerBadge) {
+            headerBadge.innerHTML = `<span>UPGRADE TO PRO</span>`;
+            headerBadge.className = 'sub-tier-badge badge-free-tier';
+          }
+          if (profileTierBadge) {
+            profileTierBadge.textContent = 'Free Account';
+            profileTierBadge.style.background = '#f1f5f9';
+            profileTierBadge.style.color = '#64748b';
+          }
+          if (profileSubDetails) {
+            profileSubDetails.textContent = 'Free Tier • 1-Week Free Trial Available';
+          }
+        }
+
+        if (proBanner) {
+          if (isPro) proBanner.classList.add('hidden');
+          else proBanner.classList.remove('hidden');
+        }
+
+        this.renderSimulatorsHub();
+        this.renderFavoritesView();
+      }
+
+      initCloudBroadcast() {
+        try {
+          const channel = new BroadcastChannel('critical-care-cloud');
+          channel.onmessage = (event) => {
+            const data = event.data;
+            if (!data) return;
+            if (data.type === 'PRICING_UPDATED' && data.settings) {
+              this.subManager.saveSettings(data.settings);
+              this.showToast('🔔 Live Subscription Prices Updated by Owner', 'info');
+            } else if (data.type === 'MODULE_TIERS_UPDATED' && data.modules) {
+              data.modules.forEach(m => {
+                const target = this.simulators.find(s => s.id === m.id);
+                if (target) target.tier = m.tier;
+              });
+              this.renderSimulatorsHub();
+              this.renderFavoritesView();
+              this.showToast('🔔 Simulator Access Tiers Updated by Owner', 'info');
+            }
+          };
+        } catch (e) {}
+      }
+
+      initFirebaseListeners() {
+        window.addEventListener('cch:auth-changed', (e) => {
+          const user = e.detail;
+          if (user && user.isLoggedIn) {
+            this.userManager.currentUser = user;
+            if (user.tier) this.subManager.currentTier = user.tier;
+            this.updateUserUI();
+            this.updateSubscriptionUI();
+          } else if (!user) {
+            this.userManager.currentUser = {
+              name: '',
+              email: '',
+              role: 'Doctor',
+              institution: '',
+              isLoggedIn: false
+            };
+            this.updateUserUI();
+          }
+        });
+
+        window.addEventListener('cch:pricing-updated', (e) => {
+          const settings = e.detail;
+          if (settings) {
+            this.subManager.saveSettings(settings);
+            this.updateSanfordPaywallUI();
+            this.updateSubscriptionUI();
+            this.showToast('🔔 Live Subscription Pricing Synced from Cloud', 'info');
+          }
+        });
+      }
+
+
+
+      updateFavButtons() {
+        document.querySelectorAll('.fav-btn').forEach(btn => {
+          const simId = btn.getAttribute('data-fav-id');
+          const isFav = this.favorites.includes(simId);
+          btn.classList.toggle('favorited', isFav);
+          const svg = btn.querySelector('svg');
+          if (svg) {
+            svg.setAttribute('fill', isFav ? '#ef4444' : 'none');
+            svg.setAttribute('stroke', isFav ? '#ef4444' : 'currentColor');
+          }
+        });
+      }
+
+      showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `<span>${message}</span>`;
+        container.appendChild(toast);
+
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+          toast.classList.remove('show');
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      }
+
+      bindEvents() {
+        // Device frame buttons
+        document.querySelectorAll('[data-frame-btn]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const frame = e.currentTarget.getAttribute('data-frame-btn');
+            this.setDeviceFrame(frame);
+          });
+        });
+
+        // Tab Navigation
+        document.querySelectorAll('[data-tab-target]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const tab = e.currentTarget.getAttribute('data-tab-target');
+            this.switchTab(tab);
+          });
+        });
+
+        // Search Input
+        const searchInput = document.getElementById('simSearchInput');
+        if (searchInput) {
+          searchInput.addEventListener('input', (e) => {
+            this.searchQuery = e.target.value;
+            this.renderSimulatorsHub();
+          });
+        }
+
+        // Disclaimer Accept
+        const acceptBtn = document.getElementById('acceptDisclaimerBtn');
+        if (acceptBtn) {
+          acceptBtn.addEventListener('click', () => {
+            try { localStorage.setItem(DISCLAIMER_STORAGE_KEY, 'true'); } catch (e) {}
+            this.hideDisclaimerModal();
+            this.showToast('✅ Medical Disclaimer Confirmed', 'success');
+          });
+        }
+
+        // Disclaimer Reopen
+        const reopenBtn = document.getElementById('reopenDisclaimerBtn');
+        if (reopenBtn) {
+          reopenBtn.addEventListener('click', () => this.showDisclaimerModal());
+        }
+
+        // Header Tier Badge Click
+        const headerBadge = document.getElementById('headerTierBadge');
+        if (headerBadge) {
+          headerBadge.addEventListener('click', () => this.showPaywallModal());
+        }
+
+        // Header Profile / Sign In Button Click
+        const headerAuthBtn = document.getElementById('headerAuthBtn');
+        if (headerAuthBtn) {
+          headerAuthBtn.addEventListener('click', () => this.showAuthModal());
+        }
+
+        // Info Tab Profile Management Button Click
+        const openProfileFromInfoBtn = document.getElementById('openProfileFromInfoBtn');
+        if (openProfileFromInfoBtn) {
+          openProfileFromInfoBtn.addEventListener('click', () => this.showAuthModal());
+        }
+
+        // Auth Modal Close Button Click
+        const closeAuthModalBtn = document.getElementById('closeAuthModalBtn');
+        if (closeAuthModalBtn) {
+          closeAuthModalBtn.addEventListener('click', () => this.hideAuthModal());
+        }
+
+        // Outside Backdrop Tap to Close Auth Modal
+        const authModal = document.getElementById('authModal');
+        if (authModal) {
+          authModal.addEventListener('click', (e) => {
+            if (e.target === authModal) {
+              this.hideAuthModal();
+            }
+          });
+        }
+
+        // Mode switchers inside Auth Modal (Create Account vs Sign In)
+        const tabModeReg = document.getElementById('tabModeRegister');
+        const tabModeLog = document.getElementById('tabModeLogin');
+        const rolePickerGroup = document.getElementById('rolePickerGroup');
+        const nameFieldGroup = document.getElementById('nameFieldGroup');
+        const instFieldGroup = document.getElementById('institutionFieldGroup');
+        const setupSubmitBtn = document.getElementById('setupSubmitBtn');
+
+        if (tabModeReg && tabModeLog) {
+          tabModeReg.addEventListener('click', () => {
+            tabModeReg.classList.add('active');
+            tabModeLog.classList.remove('active');
+            if (rolePickerGroup) rolePickerGroup.style.display = 'block';
+            if (nameFieldGroup) nameFieldGroup.style.display = 'block';
+            if (instFieldGroup) instFieldGroup.style.display = 'block';
+            if (setupSubmitBtn) setupSubmitBtn.textContent = 'Complete Setup & Start';
+          });
+          tabModeLog.addEventListener('click', () => {
+            tabModeLog.classList.add('active');
+            tabModeReg.classList.remove('active');
+            if (rolePickerGroup) rolePickerGroup.style.display = 'none';
+            if (nameFieldGroup) nameFieldGroup.style.display = 'none';
+            if (instFieldGroup) instFieldGroup.style.display = 'none';
+            if (setupSubmitBtn) setupSubmitBtn.textContent = 'Sign In to Account';
+          });
+        }
+
+        // Reusable Error Display Helpers for Form Feedback
+        const showAuthError = (message) => {
+          const alertEl = document.getElementById('gkAuthErrorAlert');
+          const msgEl = document.getElementById('gkAuthErrorMessage');
+          if (alertEl && msgEl) {
+            msgEl.textContent = message;
+            alertEl.style.display = 'flex';
+            alertEl.classList.remove('shake');
+            void alertEl.offsetWidth;
+            alertEl.classList.add('shake');
+          }
+          this.showToast(message, 'error');
+        };
+
+        const clearAuthError = () => {
+          const alertEl = document.getElementById('gkAuthErrorAlert');
+          if (alertEl) alertEl.style.display = 'none';
+        };
+
+        const showProfileError = (message) => {
+          const alertEl = document.getElementById('gkProfileErrorAlert');
+          const msgEl = document.getElementById('gkProfileErrorMessage');
+          if (alertEl && msgEl) {
+            msgEl.textContent = message;
+            alertEl.style.display = 'flex';
+            alertEl.classList.remove('shake');
+            void alertEl.offsetWidth;
+            alertEl.classList.add('shake');
+          }
+          this.showToast(message, 'error');
+        };
+
+        const clearProfileError = () => {
+          const alertEl = document.getElementById('gkProfileErrorAlert');
+          if (alertEl) alertEl.style.display = 'none';
+        };
+
+        // Reusable Live Firebase Authentication Submission Handler
+        const performAuthAction = async (formType, isReg, email, pass, name, role, inst, submitBtn) => {
+          clearAuthError();
+          const cleanEmail = (email || '').trim().toLowerCase();
+          const cleanPass = (pass || '').trim();
+
+          if (isReg && (!name || !name.trim())) {
+            showAuthError('Please enter your full practitioner or physician name.');
+            return;
+          }
+
+          if (!cleanEmail) {
+            showAuthError('Please enter your hospital or medical email address.');
+            return;
+          }
+
+          const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          if (!emailRegex.test(cleanEmail)) {
+            showAuthError('Please enter a valid email address format (e.g. physician@hospital.org).');
+            return;
+          }
+
+          if (!cleanPass) {
+            showAuthError('Please enter your password.');
+            return;
+          }
+
+          if (cleanPass.length < 8) {
+            showAuthError('For clinical security, password must be at least 8 characters.');
+            return;
+          }
+
+          const origText = submitBtn ? submitBtn.textContent : 'Submit';
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = isReg ? '⏳ Creating Verified Account...' : '⏳ Signing In to Cloud...';
+          }
+
+          try {
+            let res;
+            if (window.firebaseService) {
+              if (isReg) {
+                res = await window.firebaseService.createUserWithEmail(cleanEmail, cleanPass, { name, role, institution: inst });
+              } else {
+                res = await window.firebaseService.signInWithEmail(cleanEmail, cleanPass);
+              }
+            } else {
+              throw new Error('Authentication service is initializing. Please tap again in a moment.');
+            }
+
+            if (res && res.user) {
+              clearAuthError();
+              this.userManager.currentUser = res.user;
+
+              if (res.requiresVerification) {
+                // Display mandatory verification barrier
+                const mainGkCard = document.getElementById('gkMainAuthCard');
+                const verifCard = document.getElementById('gkVerificationCard');
+                const profileCard = document.getElementById('gkProfileCompletionCard');
+                const verifEmail = document.getElementById('verifEmailDisplay');
+                
+                if (mainGkCard) mainGkCard.style.display = 'none';
+                if (profileCard) profileCard.style.display = 'none';
+                if (verifCard) verifCard.style.display = 'block';
+                if (verifEmail) verifEmail.textContent = res.email || cleanEmail;
+
+                this.showToast(`✉️ Verification link sent to ${cleanEmail}. Please click the link to verify before entering.`, 'info');
+                return;
+              }
+
+              if (res.requiresProfileCompletion) {
+                this.updateUserUI();
+                this.showToast('🩺 Please complete your clinical profile to continue.', 'info');
+                return;
+              }
+
+              if (isReg && !localStorage.getItem('cc_trial_expiry')) {
+                this.subManager.startFreeTrial('monthly');
+              }
+              if (formType === 'modal') {
+                this.hideAuthModal();
+              }
+              this.updateUserUI();
+              this.updateSubscriptionUI();
+              this.showToast(`✅ Welcome, ${res.user.name || name}! Cloud session active.`, 'success');
+            }
+          } catch (err) {
+            console.error('Auth error:', err);
+            const userFriendlyMsg = err.message || 'Authentication error. Please check your credentials.';
+            showAuthError(userFriendlyMsg);
+          } finally {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = origText;
+            }
+          }
+        };
+
+        // Wire up Email Verification Wall Actions
+        const checkVerifBtn = document.getElementById('gkCheckVerifiedBtn');
+        if (checkVerifBtn) {
+          checkVerifBtn.addEventListener('click', async () => {
+            checkVerifBtn.disabled = true;
+            checkVerifBtn.textContent = '⏳ Checking verification status...';
+            try {
+              if (window.firebaseService) {
+                const isVerif = await window.firebaseService.checkEmailVerification();
+                if (isVerif) {
+                  const verifCard = document.getElementById('gkVerificationCard');
+                  const mainGkCard = document.getElementById('gkMainAuthCard');
+                  const profileCard = document.getElementById('gkProfileCompletionCard');
+                  if (verifCard) verifCard.style.display = 'none';
+                  
+                  if (!localStorage.getItem('cc_trial_expiry')) {
+                    this.subManager.startFreeTrial('monthly');
+                  }
+
+                  const user = this.userManager.currentUser;
+                  const isProfileDone = user && ((user.role === 'admin') || (user.isProfileComplete === true && !!user.role && !!user.name));
+                  if (isProfileDone) {
+                    this.updateUserUI();
+                    this.updateSubscriptionUI();
+                    this.showToast('🎉 Email verified successfully! Welcome to Critical Care Hub.', 'success');
+                  } else {
+                    if (profileCard) profileCard.style.display = 'block';
+                    if (mainGkCard) mainGkCard.style.display = 'none';
+                    this.showToast('✅ Email verified! Please complete your clinical profile.', 'info');
+                  }
+                } else {
+                  this.showToast('⚠️ Email is not yet verified. Please tap the verification link in your inbox or spam folder.', 'error');
+                }
+              }
+            } catch (err) {
+              this.showToast(err.message || 'Error checking verification status', 'error');
+            } finally {
+              checkVerifBtn.disabled = false;
+              checkVerifBtn.textContent = '✅ I Have Verified My Email';
+            }
+          });
+        }
+
+        const resendVerifBtn = document.getElementById('gkResendVerificationBtn');
+        if (resendVerifBtn) {
+          resendVerifBtn.addEventListener('click', async () => {
+            resendVerifBtn.disabled = true;
+            try {
+              if (window.firebaseService) {
+                await window.firebaseService.sendVerificationEmail();
+                this.showToast('✉️ Verification email resent. Please check your inbox & spam folder.', 'success');
+                let countdown = 60;
+                resendVerifBtn.textContent = `Resend in (${countdown}s)`;
+                const timer = setInterval(() => {
+                  countdown--;
+                  if (countdown > 0) {
+                    resendVerifBtn.textContent = `Resend in (${countdown}s)`;
+                  } else {
+                    clearInterval(timer);
+                    resendVerifBtn.disabled = false;
+                    resendVerifBtn.textContent = '✉️ Resend Verification Email';
+                  }
+                }, 1000);
+              }
+            } catch (err) {
+              this.showToast(err.message || 'Failed to resend email', 'error');
+              resendVerifBtn.disabled = false;
+            }
+          });
+        }
+
+        const backToAuthLink = document.getElementById('gkBackToAuthLink');
+        if (backToAuthLink) {
+          backToAuthLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (window.firebaseService) {
+              try { await window.firebaseService.signOut(); } catch (err) {}
+            }
+            this.userManager.currentUser = { name: '', email: '', role: 'Doctor', institution: '', isLoggedIn: false };
+            const verifCard = document.getElementById('gkVerificationCard');
+            const mainGkCard = document.getElementById('gkMainAuthCard');
+            const profileCard = document.getElementById('gkProfileCompletionCard');
+            if (verifCard) verifCard.style.display = 'none';
+            if (profileCard) profileCard.style.display = 'none';
+            if (mainGkCard) mainGkCard.style.display = 'block';
+
+            // Switch to Sign In tab
+            const tabLogin = document.getElementById('gkTabLogin');
+            if (tabLogin) tabLogin.click();
+            this.updateUserUI();
+          });
+        }
+
+        // Live Google Cloud Sign-In Click Handler
+        const performGoogleSignIn = async (btn) => {
+          const origContent = btn ? btn.innerHTML : '';
+          if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<span>⏳ Authenticating with Google Cloud...</span>`;
+          }
+
+          try {
+            if (window.firebaseService) {
+              const res = await window.firebaseService.signInWithGoogle();
+              if (res && res.user) {
+                this.userManager.currentUser = res.user;
+                if (!localStorage.getItem('cc_trial_expiry')) {
+                  this.subManager.startFreeTrial('monthly');
+                }
+
+                // If user has not completed clinical profile, gatekeeper presents gkProfileCompletionCard
+                if (!res.user.isProfileComplete && res.user.role !== 'admin') {
+                  this.updateUserUI();
+                  this.showToast('🩺 Please complete your clinical profile to continue.', 'info');
+                  return;
+                }
+
+                this.hideAuthModal();
+                this.updateUserUI();
+                this.updateSubscriptionUI();
+                this.showToast(`✅ Welcome, ${res.user.name || 'Doctor'}! Google Account connected.`, 'success');
+              }
+            } else {
+              throw new Error('Google Firebase service is initializing, please tap again in a moment.');
+            }
+          } catch (err) {
+            console.error('Google sign-in error:', err);
+            this.showToast(err.message || 'Google Sign-In failed.', 'error');
+          } finally {
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = origContent;
+            }
+          }
+        };
+
+        // Wire up Clinical Profile Completion Form (Google Onboarding)
+        const profileCompletionForm = document.getElementById('gkProfileCompletionForm');
+        if (profileCompletionForm) {
+          profileCompletionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearProfileError();
+            const role = document.getElementById('gkCompleteRoleSelect')?.value || 'Doctor';
+            const name = document.getElementById('gkCompleteFullNameInput')?.value || '';
+            const inst = document.getElementById('gkCompleteInstitutionInput')?.value || '';
+            const saveBtn = document.getElementById('gkSaveProfileBtn');
+
+            if (!name.trim()) {
+              showProfileError('Please enter your full practitioner or physician name.');
+              return;
+            }
+
+            const origText = saveBtn ? saveBtn.textContent : '';
+            if (saveBtn) {
+              saveBtn.disabled = true;
+              saveBtn.textContent = '⏳ Saving Clinical Credentials...';
+            }
+
+            try {
+              if (window.firebaseService) {
+                const updatedUser = await window.firebaseService.completeClinicalProfile({ name, role, institution: inst });
+                this.userManager.saveUser(updatedUser);
+                clearProfileError();
+                if (!localStorage.getItem('cc_trial_expiry')) {
+                  this.subManager.startFreeTrial('monthly');
+                }
+                this.hideAuthModal();
+                this.updateUserUI();
+                this.updateSubscriptionUI();
+                this.showToast(`✅ Profile completed! Welcome, ${updatedUser.name}!`, 'success');
+              } else {
+                throw new Error('Authentication service is initializing, please tap again in a moment.');
+              }
+            } catch (err) {
+              console.error('Profile completion error:', err);
+              showProfileError(err.message || 'Failed to save clinical profile.');
+            } finally {
+              if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = origText;
+              }
+            }
+          });
+        }
+
+        const cancelProfileLink = document.getElementById('gkCancelProfileLink');
+        if (cancelProfileLink) {
+          cancelProfileLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (window.firebaseService) {
+              try { await window.firebaseService.signOut(); } catch (err) {}
+            }
+            this.userManager.currentUser = { name: '', email: '', role: 'Doctor', institution: '', isLoggedIn: false };
+            const profileCard = document.getElementById('gkProfileCompletionCard');
+            const mainGkCard = document.getElementById('gkMainAuthCard');
+            const verifCard = document.getElementById('gkVerificationCard');
+            if (profileCard) profileCard.style.display = 'none';
+            if (verifCard) verifCard.style.display = 'none';
+            if (mainGkCard) mainGkCard.style.display = 'block';
+            this.updateUserUI();
+          });
+        }
+
+        const gkGoogleBtn = document.getElementById('gkGoogleAuthBtn');
+        if (gkGoogleBtn) {
+          gkGoogleBtn.addEventListener('click', () => performGoogleSignIn(gkGoogleBtn));
+        }
+
+        const modalGoogleBtn = document.getElementById('modalGoogleAuthBtn');
+        if (modalGoogleBtn) {
+          modalGoogleBtn.addEventListener('click', () => performGoogleSignIn(modalGoogleBtn));
+        }
+
+        // Account Setup form inside Auth Modal
+        const accountSetupForm = document.getElementById('accountSetupForm');
+        if (accountSetupForm) {
+          accountSetupForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const isReg = tabModeReg && tabModeReg.classList.contains('active');
+            const emailInput = document.getElementById('authEmailInput');
+            const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+            const passInput = document.getElementById('authPassInput');
+            const pass = passInput ? passInput.value : '';
+            const roleSelect = document.getElementById('setupRoleSelect');
+            const role = (email === 'admin@criticalcare.med') ? 'admin' : (roleSelect ? roleSelect.value : 'Doctor');
+            const nameInput = document.getElementById('setupFullNameInput');
+            let name = nameInput ? nameInput.value.trim() : (isReg ? 'Doctor' : email.split('@')[0]);
+            const instInput = document.getElementById('setupInstitutionInput');
+            const inst = instInput ? instInput.value.trim() : '';
+
+            if (role === 'Doctor' && name && !name.toLowerCase().startsWith('dr')) {
+              name = 'Dr. ' + name;
+            }
+
+            performAuthAction('modal', isReg, email, pass, name, role, inst, setupSubmitBtn);
+          });
+        }
+
+        // Continue as Guest link inside Auth Modal
+        const continueGuestLink = document.getElementById('continueAsGuestLink');
+        if (continueGuestLink) {
+          continueGuestLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.hideAuthModal();
+          });
+        }
+
+        // Forgot password triggers
+        const forgotPasswordHandler = async (emailInputEl) => {
+          const email = (emailInputEl ? emailInputEl.value : '').trim().toLowerCase();
+          if (!email) {
+            const promptEmail = prompt('Please enter your registered email address to receive a password reset link:');
+            if (!promptEmail) return;
+            try {
+              if (window.firebaseService) {
+                const res = await window.firebaseService.sendPasswordReset(promptEmail);
+                this.showToast(res.message, 'success');
+              }
+            } catch (err) {
+              this.showToast(err.message, 'error');
+            }
+            return;
+          }
+
+          try {
+            if (window.firebaseService) {
+              const res = await window.firebaseService.sendPasswordReset(email);
+              this.showToast(res.message, 'success');
+            }
+          } catch (err) {
+            this.showToast(err.message, 'error');
+          }
+        };
+
+        const gkForgotLink = document.getElementById('gkForgotPasswordLink');
+        if (gkForgotLink) {
+          gkForgotLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            forgotPasswordHandler(document.getElementById('gkEmailInput'));
+          });
+        }
+
+        // Sanford Guide Paywall Plan selection cards
+        document.querySelectorAll('[data-sanford-plan]').forEach(card => {
+          card.addEventListener('click', (e) => {
+            const plan = e.currentTarget.getAttribute('data-sanford-plan');
+            this.subManager.selectedPlan = plan;
+            this.updateSanfordPaywallUI();
+          });
+        });
+
+        // Sanford Primary CTA Button (Start 7-Day Free Trial)
+        const sanfordCta = document.getElementById('sanfordPrimaryCtaBtn');
+        if (sanfordCta) {
+          sanfordCta.addEventListener('click', () => {
+            this.subManager.startFreeTrial(this.subManager.selectedPlan);
+            this.hidePaywallModal();
+            this.showToast('🎉 1-Week Free Trial Started! All 16 clinical algorithms unlocked.', 'success');
+            if (this.activeSimulator) {
+              this.launchSimulator(this.activeSimulator.id);
+            }
+          });
+        }
+
+        // Sanford Paywall Close
+        const sanfordClose = document.getElementById('sanfordCloseBtn');
+        if (sanfordClose) {
+          sanfordClose.addEventListener('click', () => this.hidePaywallModal());
+        }
+
+        // Promo / VIP Code Redemption
+        const promoBtn = document.getElementById('redeemPromoBtn');
+        if (promoBtn) {
+          promoBtn.addEventListener('click', () => {
+            const input = document.getElementById('promoCodeInput');
+            const res = this.subManager.redeemPromoCode(input ? input.value : '');
+            this.showToast(res.message, res.success ? 'success' : 'error');
+            if (res.success) {
+              this.hidePaywallModal();
+              if (input) input.value = '';
+            }
+          });
+        }
+
+        // FULL-SCREEN AUTH GATEKEEPER MODE TABS
+        const gkTabReg = document.getElementById('gkTabRegister');
+        const gkTabLog = document.getElementById('gkTabLogin');
+        const gkRoleGroup = document.getElementById('gkRoleGroup');
+        const gkNameGroup = document.getElementById('gkNameGroup');
+        const gkInstGroup = document.getElementById('gkInstitutionGroup');
+        const gkSubmitBtn = document.getElementById('gkSubmitBtn');
+
+        if (gkTabReg && gkTabLog) {
+          gkTabReg.addEventListener('click', () => {
+            clearAuthError();
+            gkTabReg.classList.add('active');
+            gkTabLog.classList.remove('active');
+            if (gkRoleGroup) gkRoleGroup.style.display = 'block';
+            if (gkNameGroup) gkNameGroup.style.display = 'block';
+            if (gkInstGroup) gkInstGroup.style.display = 'block';
+            if (gkForgotLink) gkForgotLink.style.display = 'none';
+            if (gkSubmitBtn) gkSubmitBtn.textContent = 'Complete Setup & Enter Suite';
+          });
+          gkTabLog.addEventListener('click', () => {
+            clearAuthError();
+            gkTabLog.classList.add('active');
+            gkTabReg.classList.remove('active');
+            if (gkRoleGroup) gkRoleGroup.style.display = 'none';
+            if (gkNameGroup) gkNameGroup.style.display = 'none';
+            if (gkInstGroup) gkInstGroup.style.display = 'none';
+            if (gkForgotLink) gkForgotLink.style.display = 'inline';
+            if (gkSubmitBtn) gkSubmitBtn.textContent = 'Sign In to Account';
+          });
+        }
+
+        // Auto-clear error banners on field input
+        ['gkEmailInput', 'gkPasswordInput', 'gkFullNameInput'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener('input', clearAuthError);
+        });
+
+        ['gkCompleteFullNameInput', 'gkCompleteInstitutionInput'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener('input', clearProfileError);
+        });
+
+        // FULL-SCREEN AUTH GATEKEEPER SUBMISSION
+        const gkForm = document.getElementById('gatekeeperAuthForm');
+        if (gkForm) {
+          gkForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const isReg = gkTabReg && gkTabReg.classList.contains('active');
+            const emailInput = document.getElementById('gkEmailInput');
+            const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+            const passInput = document.getElementById('gkPasswordInput');
+            const pass = passInput ? passInput.value : '';
+            const roleSelect = document.getElementById('gkRoleSelect');
+            const role = (email === 'admin@criticalcare.med') ? 'admin' : (roleSelect ? roleSelect.value : 'Doctor');
+            const nameInput = document.getElementById('gkFullNameInput');
+            let name = nameInput ? nameInput.value.trim() : (isReg ? 'Doctor' : email.split('@')[0]);
+            const instInput = document.getElementById('gkInstitutionInput');
+            const inst = instInput ? instInput.value.trim() : '';
+
+            if (role === 'Doctor' && name && !name.toLowerCase().startsWith('dr')) {
+              name = 'Dr. ' + name;
+            }
+
+            performAuthAction('gatekeeper', isReg, email, pass, name, role, inst, gkSubmitBtn);
+          });
+        }
+
+        // Profile Sign Out
+        const signOutBtn = document.getElementById('authSignOutBtn');
+        if (signOutBtn) {
+          signOutBtn.addEventListener('click', () => {
+            this.userManager.signOut();
+            const authModal = document.getElementById('authModal');
+            if (authModal) authModal.classList.remove('show');
+            this.showToast('Signed out successfully', 'info');
+          });
+        }
+
+        // Delete Account & Data Trigger (Apple & Google Play Store Compliance)
+        const deleteAccBtn = document.getElementById('deleteAccountBtn');
+        const deleteModal = document.getElementById('deleteAccountModal');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteAccountBtn');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteAccountBtn');
+
+        if (deleteAccBtn && deleteModal) {
+          deleteAccBtn.addEventListener('click', () => {
+            const authModal = document.getElementById('authModal');
+            if (authModal) authModal.classList.remove('show');
+            deleteModal.classList.add('show');
+          });
+        }
+
+        if (cancelDeleteBtn && deleteModal) {
+          cancelDeleteBtn.addEventListener('click', () => {
+            deleteModal.classList.remove('show');
+          });
+        }
+
+        if (confirmDeleteBtn && deleteModal) {
+          confirmDeleteBtn.addEventListener('click', () => {
+            this.userManager.deleteAccount();
+            deleteModal.classList.remove('show');
+            this.showToast('🗑️ Account and all stored data permanently deleted.', 'info');
+          });
+        }
+
+        // Terms of Service & Privacy Policy Modal Triggers
+        const legalModal = document.getElementById('legalModal');
+        const closeLegalBtn = document.getElementById('closeLegalModalBtn');
+        const openTerms = document.getElementById('openTermsLink');
+        const openPrivacy = document.getElementById('openPrivacyLink');
+
+        [openTerms, openPrivacy].forEach(link => {
+          if (link && legalModal) {
+            link.addEventListener('click', (e) => {
+              e.preventDefault();
+              legalModal.classList.add('show');
+            });
+          }
+        });
+
+        if (closeLegalBtn && legalModal) {
+          closeLegalBtn.addEventListener('click', () => {
+            legalModal.classList.remove('show');
+          });
+        }
+
+        // Profile Upgrade button
+        const profUpBtn = document.getElementById('profileUpgradeBtn');
+        if (profUpBtn) {
+          profUpBtn.addEventListener('click', () => {
+            const authModal = document.getElementById('authModal');
+            if (authModal) authModal.classList.remove('show');
+            this.showPaywallModal();
+          });
+        }
+
+        // Hub Pro Banner
+        const hubProBtn = document.getElementById('hubProBannerBtn');
+        if (hubProBtn) {
+          hubProBtn.addEventListener('click', () => this.showPaywallModal());
+        }
+
+        // Pro Tab Unlock Button
+        const proTabUnlock = document.getElementById('proTabUnlockBtn');
+        if (proTabUnlock) {
+          proTabUnlock.addEventListener('click', () => this.showPaywallModal());
+        }
+
+        // Pro Tab Reset Button
+        const proTabReset = document.getElementById('proTabResetBtn');
+        if (proTabReset) {
+          proTabReset.addEventListener('click', () => {
+            this.subManager.setTier('free');
+            this.showToast('🔒 Switched to Free Demo Tier', 'info');
+          });
+        }
+
+        // Simulator Viewer Controls
+        const viewerBack = document.getElementById('viewerBackBtn');
+        if (viewerBack) {
+          viewerBack.addEventListener('click', () => this.closeSimulatorViewer());
+        }
+
+        const viewerFav = document.getElementById('viewerFavBtn');
+        if (viewerFav) {
+          viewerFav.addEventListener('click', () => {
+            if (this.activeSimulator) {
+              this.toggleFavorite(this.activeSimulator.id);
+              this.updateViewerFavState();
+            }
+          });
+        }
+
+        const viewerReload = document.getElementById('viewerReloadBtn');
+        if (viewerReload) {
+          viewerReload.addEventListener('click', () => {
+            const iframe = document.getElementById('simulatorIframe');
+            if (iframe && this.activeSimulator) {
+              iframe.src = this.activeSimulator.file;
+              this.showToast('🔄 Simulator session restarted', 'info');
+            }
+          });
+        }
+      }
+    }
+
+    // Launch immediately on load
+    window.addEventListener('DOMContentLoaded', () => {
+      window.appInstance = new App();
+      window.appInstance.init();
+    });
+
+  })();
+  </script>
+
+  <!-- Service Worker Registration for Offline Bedside Capability -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then((reg) => {
+          console.log('Critical Care ServiceWorker active:', reg.scope);
+        }).catch((err) => {
+          console.warn('ServiceWorker notice:', err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>
