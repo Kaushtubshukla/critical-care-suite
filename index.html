@@ -2120,14 +2120,20 @@
             if (data.type === 'PRICING_UPDATED' && data.settings) {
               this.subManager.saveSettings(data.settings);
               this.showToast('🔔 Live Subscription Prices Updated by Owner', 'info');
-            } else if (data.type === 'MODULE_TIERS_UPDATED' && data.modules) {
-              data.modules.forEach(m => {
-                const target = this.simulators.find(s => s.id === m.id);
-                if (target) target.tier = m.tier;
+            } else if (data.type === 'MODULE_TIERS_UPDATED') {
+              const coverageMap = data.coverage || {};
+              if (data.modules && Array.isArray(data.modules)) {
+                data.modules.forEach(m => { coverageMap[m.id] = m.tier; });
+              }
+              this.simulators.forEach(s => {
+                if (coverageMap[s.id]) s.tier = coverageMap[s.id];
               });
+              localStorage.setItem('critical_care_module_coverage', JSON.stringify(coverageMap));
               this.renderSimulatorsHub();
               this.renderFavoritesView();
-              this.showToast('🔔 Simulator Access Tiers Updated by Owner', 'info');
+              this.showToast('🛡️ Simulator Access Tiers Updated by Owner', 'info');
+            } else if (data.type === 'PUSH_NOTIFICATION' && data.notification) {
+              this.showInAppNotificationBanner(data.notification);
             }
           };
         } catch (e) {}
@@ -2137,8 +2143,18 @@
         window.addEventListener('cch:auth-changed', (e) => {
           const user = e.detail;
           if (user && user.isLoggedIn) {
+            const wasVIP = this.subManager.currentTier === 'vip';
             this.userManager.currentUser = user;
-            if (user.tier) this.subManager.currentTier = user.tier;
+            if (user.isVIP) {
+              this.subManager.currentTier = 'vip';
+              this.subManager.saveSubscriptionState('vip');
+              if (!wasVIP) {
+                this.showToast('⭐ Congratulations! Owner granted you VIP Pro All-Access!', 'success');
+              }
+            } else if (user.tier) {
+              this.subManager.currentTier = user.tier;
+              this.subManager.saveSubscriptionState(user.tier);
+            }
             this.updateUserUI();
             this.updateSubscriptionUI();
           } else if (!user) {
@@ -2162,6 +2178,106 @@
             this.showToast('🔔 Live Subscription Pricing Synced from Cloud', 'info');
           }
         });
+
+        window.addEventListener('cch:coverage-updated', (e) => {
+          const coverageMap = e.detail;
+          if (coverageMap) {
+            this.simulators.forEach(s => {
+              if (coverageMap[s.id]) s.tier = coverageMap[s.id];
+            });
+            localStorage.setItem('critical_care_module_coverage', JSON.stringify(coverageMap));
+            this.renderSimulatorsHub();
+            this.renderFavoritesView();
+            this.showToast('🛡️ Simulator Access Tiers Synced from Cloud', 'info');
+          }
+        });
+
+        window.addEventListener('cch:notification-received', (e) => {
+          const notif = e.detail;
+          if (notif) {
+            this.showInAppNotificationBanner(notif);
+          }
+        });
+      }
+
+      showInAppNotificationBanner(notif) {
+        if (!notif) return;
+        const shownKey = 'cch_shown_notifs_session';
+        let shown = [];
+        try { shown = JSON.parse(sessionStorage.getItem(shownKey) || '[]'); } catch (e) {}
+        if (notif.id && shown.includes(notif.id)) return;
+        if (notif.id) {
+          shown.push(notif.id);
+          try { sessionStorage.setItem(shownKey, JSON.stringify(shown)); } catch (e) {}
+        }
+
+        try {
+          if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        } catch (e) {}
+
+        let banner = document.getElementById('inAppPhoneBroadcastBanner');
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'inAppPhoneBroadcastBanner';
+          banner.style.cssText = `
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-140%);
+            width: calc(100% - 32px);
+            max-width: 440px;
+            background: linear-gradient(135deg, #09131f 0%, #17273d 100%);
+            border: 1.5px solid #38bdf8;
+            border-radius: 14px;
+            box-shadow: 0 16px 36px rgba(0,0,0,0.7), 0 0 24px rgba(56, 189, 248, 0.3);
+            z-index: 9999999;
+            padding: 14px 16px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            opacity: 0;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          `;
+          document.body.appendChild(banner);
+        }
+
+        banner.innerHTML = `
+          <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(56, 189, 248, 0.18); border: 1px solid rgba(56, 189, 248, 0.4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 19px;">
+            📢
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+              <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${notif.title || 'Clinical Alert'}</h4>
+              <span style="font-size: 10px; color: #38bdf8; font-weight: 700; margin-left: 8px;">LIVE ALERT</span>
+            </div>
+            <p style="margin: 0; font-size: 12px; color: #cbd5e1; line-height: 1.45;">${notif.message || ''}</p>
+          </div>
+          <button type="button" id="closePhoneBannerBtn" style="background: none; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; padding: 0 4px; line-height: 1; margin-top: -3px;">&times;</button>
+        `;
+
+        requestAnimationFrame(() => {
+          banner.style.transform = 'translateX(-50%) translateY(0)';
+          banner.style.opacity = '1';
+        });
+
+        const closeBtn = banner.querySelector('#closePhoneBannerBtn');
+        if (closeBtn) {
+          closeBtn.onclick = () => {
+            banner.style.transform = 'translateX(-50%) translateY(-140%)';
+            banner.style.opacity = '0';
+          };
+        }
+
+        setTimeout(() => {
+          if (banner && banner.parentElement) {
+            banner.style.transform = 'translateX(-50%) translateY(-140%)';
+            banner.style.opacity = '0';
+          }
+        }, 9000);
+
+        this.showToast(`📢 ${notif.title}`, 'info');
       }
 
 

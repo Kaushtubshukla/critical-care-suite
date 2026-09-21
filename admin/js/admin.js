@@ -551,19 +551,36 @@ class AdminDashboardController {
 
     const saveCoverageBtn = document.getElementById('saveCoverageMatrixBtn');
     if (saveCoverageBtn) {
-      saveCoverageBtn.addEventListener('click', () => this.saveModuleCoverageMatrix());
+      saveCoverageBtn.addEventListener('click', async () => {
+        saveCoverageBtn.disabled = true;
+        saveCoverageBtn.textContent = '⏳ Broadcasting to Cloud...';
+        try {
+          await this.saveModuleCoverageMatrix();
+        } finally {
+          saveCoverageBtn.disabled = false;
+          saveCoverageBtn.textContent = '💾 Save Coverage Matrix to All Devices';
+        }
+      });
     }
 
     const bulkProBtn = document.getElementById('bulkProBtn');
     if (bulkProBtn) {
-      bulkProBtn.addEventListener('click', () => {
-        document.querySelectorAll('.coverage-select').forEach(sel => {
-          sel.value = 'pro';
-          const id = sel.getAttribute('data-id');
-          const badgeSpan = document.getElementById(`badge-${id}`);
-          if (badgeSpan) badgeSpan.innerHTML = '<span class="badge badge-pro">PRO SUBSCRIBER</span>';
-        });
-        this.saveModuleCoverageMatrix();
+      bulkProBtn.addEventListener('click', async () => {
+        bulkProBtn.disabled = true;
+        bulkProBtn.textContent = '⏳ Setting All to Pro...';
+        try {
+          document.querySelectorAll('.coverage-select').forEach(sel => {
+            sel.value = 'pro';
+            const id = sel.getAttribute('data-id');
+            const badgeSpan = document.getElementById(`badge-${id}`);
+            if (badgeSpan) badgeSpan.innerHTML = '<span class="badge badge-pro">PRO SUBSCRIBER</span>';
+          });
+          await this.saveModuleCoverageMatrix();
+          this.showToast('🔒 All 16 Simulators Set to PRO SUBSCRIBER and Broadcasted to Cloud!');
+        } finally {
+          bulkProBtn.disabled = false;
+          bulkProBtn.textContent = '🔒 Set All to Pro';
+        }
       });
     }
 
@@ -804,7 +821,7 @@ class AdminDashboardController {
     });
   }
 
-  saveModuleCoverageMatrix() {
+  async saveModuleCoverageMatrix() {
     const selects = document.querySelectorAll('.coverage-select');
     const coverageMap = {};
     const modulesUpdateList = [];
@@ -832,9 +849,14 @@ class AdminDashboardController {
       localStorage.setItem('critical_care_module_coverage', JSON.stringify(coverageMap));
     } catch (e) {}
 
-    this.broadcastCloudUpdate('MODULE_TIERS_UPDATED', { modules: modulesUpdateList });
+    // Save live to Google Cloud Firestore
+    if (firebaseService && firebaseService.saveLiveCoverageMatrix) {
+      await firebaseService.saveLiveCoverageMatrix(coverageMap);
+    }
+
+    this.broadcastCloudUpdate('MODULE_TIERS_UPDATED', { modules: modulesUpdateList, coverage: coverageMap });
     this.renderPublishedModules();
-    this.showToast(`🛡️ Module Coverage Matrix Saved! Synchronized ${modulesUpdateList.length} simulators.`);
+    this.showToast(`🛡️ Module Coverage Matrix Saved to Cloud! Synchronized ${modulesUpdateList.length} simulators.`);
   }
 }
 

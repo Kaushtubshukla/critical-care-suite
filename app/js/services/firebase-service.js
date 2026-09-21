@@ -140,6 +140,49 @@ class FirebaseService {
         });
       } catch (e) {}
 
+      // Listen for Live Module Coverage updates from Cloud Firestore
+      try {
+        const coverageRef = doc(this.fbDb, 'settings', 'coverage');
+        onSnapshot(coverageRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data && data.coverage) {
+              localStorage.setItem('critical_care_module_coverage', JSON.stringify(data.coverage));
+              window.dispatchEvent(new CustomEvent('cch:coverage-updated', { detail: data.coverage }));
+            }
+          }
+        }, (err) => {
+          console.warn('Firestore coverage stream notice:', err.message);
+        });
+      } catch (e) {}
+
+      // Listen for Live Push Notifications from Cloud Firestore
+      try {
+        const { collection, query, orderBy, limit } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        const notifQuery = query(collection(this.fbDb, 'notifications'), orderBy('timestamp', 'desc'), limit(5));
+        let isInitialNotifSnap = true;
+        onSnapshot(notifQuery, (snap) => {
+          const notifs = [];
+          snap.forEach(d => notifs.push(d.data()));
+          if (notifs.length > 0) {
+            const latest = notifs[0];
+            const ageMs = Date.now() - (latest.timestamp || 0);
+            const isFresh = ageMs < (20 * 60 * 1000); // within last 20 minutes
+            if (!isInitialNotifSnap || isFresh) {
+              window.dispatchEvent(new CustomEvent('cch:notification-received', { detail: latest }));
+            }
+          }
+          isInitialNotifSnap = false;
+        }, (err) => {
+          console.warn('Firestore notifications stream notice:', err.message);
+        });
+      } catch (e) {}
+
+      // If active user is already logged in, listen for VIP / tier changes in real-time
+      if (this.currentUser && this.currentUser.uid) {
+        this._listenToCurrentUserDoc(this.currentUser.uid);
+      }
+
       window.dispatchEvent(new CustomEvent('cch:firebase-ready', { detail: { projectId: FIREBASE_CONFIG.projectId } }));
     } catch (err) {
       console.warn('Firebase live connection notice:', err.message);
@@ -193,9 +236,67 @@ class FirebaseService {
         document.documentElement.classList.remove('is-authenticated-user');
       }
       this._notifyAuthChange();
+
+      // Listen to this user's document in real-time so VIP/tier changes reflect instantly
+      this._listenToCurrentUserDoc(fbUser.uid);
+
       return this.currentUser;
     } catch (e) {
       console.warn('Error syncing Firebase user document:', e.message);
+    }
+  }
+
+  _listenToCurrentUserDoc(uid) {
+    if (!this.fbDb || !uid || uid.startsWith('local_')) return;
+    if (this._userDocUnsub) {
+      this._userDocUnsub();
+      this._userDocUnsub = null;
+    }
+    try {
+      import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({ doc, onSnapshot }) => {
+        const userRef = doc(this.fbDb, 'users', uid);
+        this._userDocUnsub = onSnapshot(userRef, (snap) => {
+          if (snap.exists()) {
+            const remoteData = snap.data();
+            const wasVIP = !!this.currentUser?.isVIP;
+            const newVIP = !!remoteData.isVIP;
+            const newTier = newVIP ? 'vip' : (remoteData.tier || this.currentUser?.tier || 'free');
+
+            let changed = false;
+            if (this.currentUser) {
+              if (wasVIP !== newVIP || this.currentUser.tier !== newTier) {
+                changed = true;
+              }
+              this.currentUser = {
+                ...this.currentUser,
+                ...remoteData,
+                isVIP: newVIP,
+                tier: newTier
+              };
+            } else {
+              this.currentUser = {
+                ...remoteData,
+                isVIP: newVIP,
+                tier: newTier,
+                isLoggedIn: true
+              };
+              changed = true;
+            }
+
+            localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
+            localStorage.setItem(this.subKey, newTier);
+
+            if (changed) {
+              console.log('⭐ Live VIP / Tier update received from Cloud Firestore:', { isVIP: newVIP, tier: newTier });
+              this._notifyAuthChange();
+            }
+          }
+        }, (err) => {
+          console.warn('User doc onSnapshot notice:', err.message);
+        });
+      });
+    } catch (e) {
+      console.warn('_listenToCurrentUserDoc error:', e);
     }
   }
 
@@ -873,6 +974,28 @@ class FirebaseService {
     }
     if (this.channel) {
       this.channel.postMessage({ type: 'PRICING_UPDATED', settings });
+    }
+  }
+
+  /**
+   * Save live module coverage matrix (Free vs Pro vs VIP) to Cloud Firestore
+   */
+  async saveLiveCoverageMatrix(coverageMap) {
+    localStorage.setItem('critical_care_module_coverage', JSON.stringify(coverageMap));
+    if (this.isRealFirebaseActive && this.fbDb) {
+      try {
+        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        await setDoc(doc(this.fbDb, 'settings', 'coverage'), {
+          coverage: coverageMap,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        console.log('✅ Module coverage matrix saved to Cloud Firestore!');
+      } catch (e) {
+        console.warn('Firestore saveLiveCoverageMatrix notice:', e.message);
+      }
+    }
+    if (this.channel) {
+      this.channel.postMessage({ type: 'MODULE_TIERS_UPDATED', coverage: coverageMap });
     }
   }
 }
