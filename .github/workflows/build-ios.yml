@@ -27,14 +27,12 @@ jobs:
         run: node bundle-assets.js
 
       - name: Sync iOS Capacitor Platform
-        run: |
-          npx cap sync ios
-          cd ios/App && pod install
+        run: npx cap sync ios
 
       - name: Build iOS Simulator App (For Appetize.io & Simulators)
         run: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace \
+          xcodebuild -project App.xcodeproj \
                      -scheme App \
                      -configuration Release \
                      -destination 'generic/platform=iOS Simulator' \
