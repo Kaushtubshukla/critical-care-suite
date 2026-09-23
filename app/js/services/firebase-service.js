@@ -9,7 +9,6 @@ import { initializeApp } from '../vendor/firebase/firebase-app.js';
 import { 
   getAuth, 
   initializeAuth,
-  indexedDBLocalPersistence,
   browserLocalPersistence,
   browserPopupRedirectResolver,
   onAuthStateChanged, 
@@ -106,11 +105,12 @@ class FirebaseService {
   async _initRealFirebase() {
     try {
       this.fbApp = initializeApp(FIREBASE_CONFIG);
-      
-      // Initialize Auth with IndexedDB + LocalStorage persistence and browser popup/redirect resolver
+
+      // Initialize Auth with standard browserLocalPersistence (localStorage) for iOS & Android
+      // This completely avoids Apple WKWebView's custom-scheme IndexedDB transaction deadlock
       try {
         this.fbAuth = initializeAuth(this.fbApp, {
-          persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+          persistence: browserLocalPersistence,
           popupRedirectResolver: browserPopupRedirectResolver
         });
       } catch (authInitErr) {
@@ -123,11 +123,6 @@ class FirebaseService {
       this.isRealFirebaseActive = true;
 
       console.log('✅ Connected to live Google Firebase Cloud:', FIREBASE_CONFIG.projectId);
-
-      // Enable Firestore offline persistence in background without blocking Auth
-      enableIndexedDbPersistence(this.fbDb).catch((dbPersistErr) => {
-        console.warn('Firestore offline persistence notice:', dbPersistErr.message);
-      });
 
       // Handle redirect result in background without blocking Auth
       getRedirectResult(this.fbAuth, browserPopupRedirectResolver).then((redirectRes) => {
@@ -485,7 +480,10 @@ class FirebaseService {
         
         
 
-        const cred = await createUserWithEmailAndPassword(this.fbAuth, cleanEmail, password);
+        const cred = await Promise.race([
+          createUserWithEmailAndPassword(this.fbAuth, cleanEmail, password),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Account creation request timed out. Please check your internet connection and try again.')), 10000))
+        ]);
         const fbUser = cred.user;
 
         // Set display name in Firebase Auth
@@ -579,15 +577,21 @@ class FirebaseService {
         
         
 
-        const cred = await signInWithEmailAndPassword(this.fbAuth, cleanEmail, password);
+        const cred = await Promise.race([
+          signInWithEmailAndPassword(this.fbAuth, cleanEmail, password),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Sign in request timed out. Please check your internet connection and try again.')), 10000))
+        ]);
         const fbUser = cred.user;
 
-        // Fetch user document from Cloud Firestore
+        // Fetch user document from Cloud Firestore with safety timeout
         let userDocData = null;
         try {
           if (this.fbDb) {
-            const snap = await getDoc(doc(this.fbDb, 'users', fbUser.uid));
-            if (snap.exists()) {
+            const snap = await Promise.race([
+              getDoc(doc(this.fbDb, 'users', fbUser.uid)),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore profile fetch timeout')), 3000))
+            ]);
+            if (snap && snap.exists()) {
               userDocData = snap.data();
             }
           }
