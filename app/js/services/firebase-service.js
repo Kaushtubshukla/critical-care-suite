@@ -89,9 +89,13 @@ class FirebaseService {
   }
 
   async _ensureInitialized() {
+    if (this.isRealFirebaseActive) return;
     if (this._initPromise) {
       try {
-        await this._initPromise;
+        await Promise.race([
+          this._initPromise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase init timeout')), 2500))
+        ]);
       } catch (e) {
         console.warn('Firebase init notice:', e);
       }
@@ -101,10 +105,6 @@ class FirebaseService {
   // --- Real Google Firebase Cloud Initialization ---
   async _initRealFirebase() {
     try {
-      
-      
-      
-
       this.fbApp = initializeApp(FIREBASE_CONFIG);
       
       // Initialize Auth with IndexedDB + LocalStorage persistence and browser popup/redirect resolver
@@ -118,29 +118,25 @@ class FirebaseService {
       }
 
       this.fbDb = getFirestore(this.fbApp);
-      
-      // Enable Firestore offline persistence
-      try {
-        await enableIndexedDbPersistence(this.fbDb);
-      } catch (dbPersistErr) {
-        console.warn('Firestore offline persistence notice:', dbPersistErr.message);
-      }
-
       this.googleProvider = new GoogleAuthProvider();
       this.googleProvider.setCustomParameters({ prompt: 'select_account' });
       this.isRealFirebaseActive = true;
 
       console.log('✅ Connected to live Google Firebase Cloud:', FIREBASE_CONFIG.projectId);
 
-      // Handle redirect result if signInWithRedirect was used
-      try {
-        const redirectRes = await getRedirectResult(this.fbAuth, browserPopupRedirectResolver);
+      // Enable Firestore offline persistence in background without blocking Auth
+      enableIndexedDbPersistence(this.fbDb).catch((dbPersistErr) => {
+        console.warn('Firestore offline persistence notice:', dbPersistErr.message);
+      });
+
+      // Handle redirect result in background without blocking Auth
+      getRedirectResult(this.fbAuth, browserPopupRedirectResolver).then((redirectRes) => {
         if (redirectRes && redirectRes.user) {
-          await this._syncFirebaseUserDoc(redirectRes.user);
+          this._syncFirebaseUserDoc(redirectRes.user);
         }
-      } catch (redirErr) {
+      }).catch((redirErr) => {
         console.warn('Firebase redirect result notice:', redirErr.message);
-      }
+      });
 
       // Listen for Firebase Auth state changes
       onAuthStateChanged(this.fbAuth, async (fbUser) => {

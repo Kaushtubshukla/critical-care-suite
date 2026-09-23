@@ -2465,7 +2465,10 @@
             if (rolePickerGroup) rolePickerGroup.style.display = 'block';
             if (nameFieldGroup) nameFieldGroup.style.display = 'block';
             if (instFieldGroup) instFieldGroup.style.display = 'block';
-            if (setupSubmitBtn) setupSubmitBtn.textContent = 'Complete Setup & Start';
+            if (setupSubmitBtn) {
+              setupSubmitBtn.disabled = false;
+              setupSubmitBtn.textContent = 'Complete Setup & Start';
+            }
             clearAuthError();
           });
           tabModeLog.addEventListener('click', () => {
@@ -2474,7 +2477,10 @@
             if (rolePickerGroup) rolePickerGroup.style.display = 'none';
             if (nameFieldGroup) nameFieldGroup.style.display = 'none';
             if (instFieldGroup) instFieldGroup.style.display = 'none';
-            if (setupSubmitBtn) setupSubmitBtn.textContent = 'Sign In to Account';
+            if (setupSubmitBtn) {
+              setupSubmitBtn.disabled = false;
+              setupSubmitBtn.textContent = 'Sign In to Account';
+            }
             clearAuthError();
           });
         }
@@ -2554,6 +2560,14 @@
             submitBtn.textContent = isReg ? '⏳ Creating Verified Account...' : '⏳ Signing In to Cloud...';
           }
 
+          let authSafetyTimer = setTimeout(() => {
+            if (submitBtn && submitBtn.disabled) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = origText;
+              showAuthError('Connection timed out. Please check your network connection and try again.');
+            }
+          }, 12000);
+
           try {
             let res;
             if (window.firebaseService) {
@@ -2613,6 +2627,10 @@
               }
             }
           } finally {
+            if (authSafetyTimer) {
+              clearTimeout(authSafetyTimer);
+              authSafetyTimer = null;
+            }
             if (submitBtn) {
               submitBtn.disabled = false;
               submitBtn.textContent = origText;
@@ -3041,7 +3059,10 @@
             if (gkNameGroup) gkNameGroup.style.display = 'block';
             if (gkInstGroup) gkInstGroup.style.display = 'block';
             if (gkForgotLink) gkForgotLink.style.display = 'none';
-            if (gkSubmitBtn) gkSubmitBtn.textContent = 'Complete Setup & Enter Suite';
+            if (gkSubmitBtn) {
+              gkSubmitBtn.disabled = false;
+              gkSubmitBtn.textContent = 'Complete Setup & Enter Suite';
+            }
           });
           gkTabLog.addEventListener('click', () => {
             clearAuthError();
@@ -3051,7 +3072,10 @@
             if (gkNameGroup) gkNameGroup.style.display = 'none';
             if (gkInstGroup) gkInstGroup.style.display = 'none';
             if (gkForgotLink) gkForgotLink.style.display = 'inline';
-            if (gkSubmitBtn) gkSubmitBtn.textContent = 'Sign In to Account';
+            if (gkSubmitBtn) {
+              gkSubmitBtn.disabled = false;
+              gkSubmitBtn.textContent = 'Sign In to Account';
+            }
           });
         }
 
