@@ -47,8 +47,19 @@ class FirebaseService {
 
     this._loadLocalSession();
 
+    this._initPromise = null;
     if (USE_REAL_FIREBASE) {
-      this._initRealFirebase();
+      this._initPromise = this._initRealFirebase();
+    }
+  }
+
+  async _ensureInitialized() {
+    if (this._initPromise) {
+      try {
+        await this._initPromise;
+      } catch (e) {
+        console.warn('Firebase init wait notice:', e);
+      }
     }
   }
 
@@ -453,6 +464,8 @@ class FirebaseService {
     const trialDays = 7;
     const trialExpiry = Date.now() + (trialDays * 86400000);
 
+    await this._ensureInitialized();
+
     if (!navigator.onLine && (!this.isRealFirebaseActive || !this.fbAuth)) {
       throw new Error('An active internet connection is required to create and verify your official physician account with Google Firebase.');
     }
@@ -542,6 +555,8 @@ class FirebaseService {
     if (!cleanEmail || !password) {
       throw new Error('Please enter both your registered email and password.');
     }
+
+    await this._ensureInitialized();
 
     if (!navigator.onLine && (!this.isRealFirebaseActive || !this.fbAuth)) {
       if (this.currentUser && this.currentUser.email === cleanEmail && (this.currentUser.emailVerified || this.currentUser.role === 'admin')) {
@@ -672,6 +687,8 @@ class FirebaseService {
     if (!navigator.onLine) {
       throw new Error('Google Sign-In requires an active internet connection.');
     }
+
+    await this._ensureInitialized();
 
     if (this.isRealFirebaseActive && this.fbAuth) {
       try {
