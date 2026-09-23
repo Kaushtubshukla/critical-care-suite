@@ -532,12 +532,9 @@ class FirebaseService {
       } catch (authErr) {
         console.error('Firebase createUser error:', authErr);
         if (authErr.code === 'auth/email-already-in-use') {
-          try {
-            const signInRes = await this.signInWithEmail(cleanEmail, password);
-            return signInRes;
-          } catch (signInErr) {
-            throw new Error('An account with this email already exists. Please tap "Sign In" above to log in.');
-          }
+          const err = new Error('An account with this email already exists. Please tap "Sign In" above to log in.');
+          err.code = 'auth/email-already-in-use';
+          throw err;
         } else if (authErr.code === 'auth/weak-password') {
           throw new Error('Password is too weak. Please use at least 8 characters with a mix of letters and numbers.');
         } else if (authErr.code === 'auth/invalid-email') {
@@ -724,10 +721,10 @@ class FirebaseService {
         }
       } catch (err) {
         console.error('Google Sign-In error:', err);
-        if (err.code === 'auth/popup-closed-by-user') {
-          throw new Error('Google Sign-In was cancelled.');
-        } else if (err.code === 'auth/cancelled-popup-request') {
-          throw new Error('Another sign-in request is already in progress.');
+        if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/user-cancelled') {
+          const cancelErr = new Error('Google Sign-In was cancelled.');
+          cancelErr.code = err.code;
+          throw cancelErr;
         }
         throw new Error(err.message || 'Google Sign-In failed. Please ensure Google Play Services or your browser allows popup sign-in.');
       }
