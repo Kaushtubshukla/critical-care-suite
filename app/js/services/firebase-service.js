@@ -156,6 +156,29 @@ class FirebaseService {
         });
       } catch (e) {}
 
+      // Listen for Live Simulator Catalog & Archive updates from Cloud Firestore
+      try {
+        const catalogRef = doc(this.fbDb, 'settings', 'catalog');
+        onSnapshot(catalogRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data) {
+              if (Array.isArray(data.archived)) {
+                localStorage.setItem('cch_archived_modules', JSON.stringify(data.archived));
+              }
+              if (Array.isArray(data.published)) {
+                localStorage.setItem('cch_live_published_modules', JSON.stringify(data.published));
+              }
+              window.dispatchEvent(new CustomEvent('cch:catalog-updated', { detail: data }));
+              window.dispatchEvent(new CustomEvent('cch:modules-updated', { detail: data.published }));
+              window.dispatchEvent(new CustomEvent('cch:archived-updated', { detail: data.archived }));
+            }
+          }
+        }, (err) => {
+          console.warn('Firestore catalog stream notice:', err.message);
+        });
+      } catch (e) {}
+
       // Listen for Live Push Notifications from Cloud Firestore
       try {
         const { collection, query, orderBy, limit } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
@@ -391,6 +414,14 @@ class FirebaseService {
     if (broadcast && this.channel) {
       this.channel.postMessage({ type: 'AUTH_UPDATED', user: this.currentUser });
     }
+  }
+
+  hasProAccess() {
+    if (!this.currentUser) return false;
+    const u = this.currentUser;
+    if (u.isVIP || u.role === 'admin' || u.tier === 'pro' || u.tier === 'vip') return true;
+    if (u.tier === 'trial' && u.trialExpiry && Number(u.trialExpiry) > Date.now()) return true;
+    return false;
   }
 
   onAuthStateChanged(callback) {
@@ -997,6 +1028,31 @@ class FirebaseService {
     if (this.channel) {
       this.channel.postMessage({ type: 'MODULE_TIERS_UPDATED', coverage: coverageMap });
     }
+  }
+
+  /**
+   * Save live simulator catalog & archived simulators to Cloud Firestore
+   */
+  async saveLiveCatalog(archivedList, publishedList) {
+    localStorage.setItem('cch_archived_modules', JSON.stringify(archivedList));
+    localStorage.setItem('cch_live_published_modules', JSON.stringify(publishedList));
+    if (this.isRealFirebaseActive && this.fbDb) {
+      try {
+        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        await setDoc(doc(this.fbDb, 'settings', 'catalog'), {
+          archived: archivedList,
+          published: publishedList,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        console.log('✅ Live catalog & archive state saved to Cloud Firestore!');
+      } catch (e) {
+        console.warn('Firestore saveLiveCatalog notice:', e.message);
+      }
+    }
+    if (this.channel) {
+      this.channel.postMessage({ type: 'CATALOG_UPDATED', archived: archivedList, published: publishedList });
+    }
+    window.dispatchEvent(new CustomEvent('cch:catalog-updated', { detail: { archived: archivedList, published: publishedList } }));
   }
 }
 

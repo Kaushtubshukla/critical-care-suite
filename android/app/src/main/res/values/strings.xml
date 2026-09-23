@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Critical Care Hub</string>
+    <string name="title_activity_main">Critical Care Hub</string>
+    <string name="package_name">com.criticalcare.med</string>
+    <string name="custom_url_scheme">com.criticalcare.med</string>
+</resources>

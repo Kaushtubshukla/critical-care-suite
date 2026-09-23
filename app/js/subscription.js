@@ -45,7 +45,7 @@ export class SubscriptionManager {
   }
 
   loadSubscriptionState() {
-    if (firebaseService && firebaseService.hasProAccess()) {
+    if (firebaseService && typeof firebaseService.hasProAccess === 'function' && firebaseService.hasProAccess()) {
       return 'pro';
     }
     try {
@@ -67,7 +67,7 @@ export class SubscriptionManager {
   }
 
   isPro() {
-    if (firebaseService && firebaseService.hasProAccess()) {
+    if (firebaseService && typeof firebaseService.hasProAccess === 'function' && firebaseService.hasProAccess()) {
       return true;
     }
     return this.currentTier === 'pro';

@@ -1,0 +1,40 @@
+{
+  "name": "critical-care-interactive-suite",
+  "version": "2.5.0",
+  "description": "Critical Care Clinical Decision Simulators Suite & Admin Platform",
+  "main": "app/js/app.js",
+  "scripts": {
+    "start": "python -m http.server 8080",
+    "test:imports": "node check_imports.js",
+    "bundle": "node bundle-assets.js",
+    "cap:sync": "node bundle-assets.js && npx cap sync android",
+    "cap:sync:ios": "node bundle-assets.js && npx cap sync ios",
+    "cap:sync:all": "node bundle-assets.js && npx cap sync",
+    "cap:open": "npx cap open android",
+    "cap:open:ios": "npx cap open ios",
+    "apk:build": "node bundle-assets.js && npx cap sync android && cd android && gradlew.bat assembleDebug",
+    "firebase:login": "firebase login",
+    "deploy": "node bundle-admin.js && firebase deploy --only hosting",
+    "deploy:admin": "node bundle-admin.js && firebase deploy --only hosting"
+  },
+  "keywords": [
+    "medical",
+    "icu",
+    "critical-care",
+    "simulators",
+    "ards",
+    "ecg"
+  ],
+  "author": "Critical Care Team",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.30.2"
+  }
+}

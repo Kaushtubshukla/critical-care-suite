@@ -1,0 +1,37 @@
+{
+  "name": "Critical Care Interactive Hub & Simulators",
+  "short_name": "Critical Care",
+  "description": "Evidence-based critical care clinical decision tools, ARDS ventilation, stroke pathways & moving ECG telemetry.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#07111a",
+  "theme_color": "#07111a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "app/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "app/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["medical", "education"],
+  "shortcuts": [
+    {
+      "name": "Live ECG Simulator",
+      "url": "./index.html?launch=cardiac-rhythm",
+      "description": "Launch moving cardiac rhythm telemetry"
+    },
+    {
+      "name": "ARDS Calculator",
+      "url": "./index.html?launch=ards-active",
+      "description": "Closed-loop ARDS ventilation calculator"
+    }
+  ]
+}

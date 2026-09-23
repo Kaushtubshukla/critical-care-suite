@@ -5,6 +5,7 @@
  */
 
 import { SIMULATORS } from '../../data/simulators.js';
+import { firebaseService } from './firebase-service.js';
 
 class ModulesService {
   constructor() {
@@ -16,26 +17,36 @@ class ModulesService {
   }
 
   _initModules() {
+    // Ensure archived list exists first
+    let archived = [];
+    try {
+      const savedArchived = localStorage.getItem(this.archiveKey);
+      if (savedArchived) archived = JSON.parse(savedArchived);
+    } catch (e) {}
+    const archivedIds = new Set(archived.map(a => a.id));
+
     // Seed initial published simulators from catalog if not present in localStorage
     const saved = localStorage.getItem(this.storageKey);
     let list = [];
     if (!saved) {
-      list = [...SIMULATORS];
+      list = SIMULATORS.filter(sim => !archivedIds.has(sim.id));
     } else {
       try {
         list = JSON.parse(saved);
+        // Exclude any modules that are currently in the archive
+        list = list.filter(m => !archivedIds.has(m.id));
         SIMULATORS.forEach(sim => {
-          if (!list.some(item => item.id === sim.id || item.file === sim.file)) {
+          if (!archivedIds.has(sim.id) && !list.some(item => item.id === sim.id || item.file === sim.file)) {
             list.push(sim);
           }
         });
       } catch (e) {
-        list = [...SIMULATORS];
+        list = SIMULATORS.filter(sim => !archivedIds.has(sim.id));
       }
     }
     localStorage.setItem(this.storageKey, JSON.stringify(list));
 
-    // Ensure archived list exists
+    // Ensure archived list exists in storage
     if (!localStorage.getItem(this.archiveKey)) {
       localStorage.setItem(this.archiveKey, JSON.stringify([]));
     }
@@ -184,6 +195,8 @@ class ModulesService {
     const mod = published.find(m => m.id === moduleId);
     if (!mod) throw new Error('Simulator not found');
 
+    console.log(`[MODULES-SVC] Archiving "${mod.title}" (${moduleId})`);
+
     const updatedPublished = published.filter(m => m.id !== moduleId);
     const archived = this.getArchivedModules();
 
@@ -195,6 +208,16 @@ class ModulesService {
 
     this._savePublishedModules(updatedPublished);
     this._saveArchivedModules(updatedArchived);
+
+    console.log(`[MODULES-SVC] Published: ${updatedPublished.length}, Archived: ${updatedArchived.length}`);
+
+    // Synchronize to Cloud Firestore across all devices and domains
+    if (firebaseService && firebaseService.saveLiveCatalog) {
+      console.log('[MODULES-SVC] Saving catalog to Cloud Firestore...');
+      firebaseService.saveLiveCatalog(updatedArchived, updatedPublished).catch((e) => {
+        console.warn('[MODULES-SVC] Firestore save error:', e);
+      });
+    }
     return true;
   }
 
@@ -217,21 +240,74 @@ class ModulesService {
 
     this._saveArchivedModules(updatedArchived);
     this._savePublishedModules(updatedPublished);
+
+    // Synchronize to Cloud Firestore across all devices and domains
+    if (firebaseService && firebaseService.saveLiveCatalog) {
+      firebaseService.saveLiveCatalog(updatedArchived, updatedPublished).catch(() => {});
+    }
     return restoredMod;
   }
 
   /**
-   * Permanently Delete Simulator
+   * Permanently Delete Simulator (Safety net: preserved in Review Queue for 1-click re-import)
    */
   permanentlyDeleteModule(moduleId) {
     const archived = this.getArchivedModules();
+    const published = this.getPublishedModules();
+    const target = archived.find(a => a.id === moduleId) || published.find(p => p.id === moduleId);
+
     const updatedArchived = archived.filter(a => a.id !== moduleId);
     this._saveArchivedModules(updatedArchived);
 
-    const published = this.getPublishedModules();
     const updatedPublished = published.filter(p => p.id !== moduleId);
     this._savePublishedModules(updatedPublished);
+
+    // Safety Net: stage in review queue so the physical file is never lost and can be re-published anytime!
+    if (target) {
+      const queue = this.getPendingGitHubModules();
+      if (!queue.some(q => q.id === target.id || q.filename === target.file)) {
+        queue.unshift({
+          id: target.id,
+          filename: target.file,
+          suggestedTitle: target.title,
+          suggestedCategory: target.category || 'respiratory',
+          suggestedTier: target.tier || 'pro',
+          description: 'Deleted simulator preserved from library. Click "🚀 Publish to Live App" to re-activate anytime.'
+        });
+        this._savePendingQueue(queue);
+      }
+    }
+
+    // Synchronize to Cloud Firestore across all devices and domains
+    if (firebaseService && firebaseService.saveLiveCatalog) {
+      firebaseService.saveLiveCatalog(updatedArchived, updatedPublished).catch(() => {});
+    }
     return true;
+  }
+
+  /**
+   * Emergency 1-Click Library Restore: Restores any missing canonical simulators
+   */
+  restoreAllCanonicalModules() {
+    let published = this.getPublishedModules();
+    let count = 0;
+    SIMULATORS.forEach(sim => {
+      if (!published.some(p => p.id === sim.id || p.file === sim.file)) {
+        published.push(sim);
+        count++;
+      }
+    });
+    // Remove from archive if restored to published
+    let archived = this.getArchivedModules();
+    archived = archived.filter(a => !published.some(p => p.id === a.id));
+    this._saveArchivedModules(archived);
+    this._savePublishedModules(published);
+
+    // Synchronize to Cloud Firestore across all devices and domains
+    if (firebaseService && firebaseService.saveLiveCatalog) {
+      firebaseService.saveLiveCatalog(archived, published).catch(() => {});
+    }
+    return count;
   }
 
   /**

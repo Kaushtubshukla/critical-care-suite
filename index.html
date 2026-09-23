@@ -1242,6 +1242,17 @@
         return false;
       }
 
+      isUserSubscribed() {
+        if (this.isPro()) return true;
+        try {
+          if (window.appInstance && window.appInstance.userManager && window.appInstance.userManager.currentUser) {
+            const u = window.appInstance.userManager.currentUser;
+            if (u.isVIP || u.tier === 'pro' || u.tier === 'vip' || u.role === 'admin' || u.isAdmin) return true;
+          }
+        } catch (e) {}
+        return false;
+      }
+
       setTier(tier) {
         this.saveSubscriptionState(tier);
       }
@@ -1301,16 +1312,7 @@
     // --- 3. MAIN APP CONTROLLER ---
     class App {
       constructor() {
-        this.simulators = SIMULATORS;
-        try {
-          const savedCoverage = localStorage.getItem('critical_care_module_coverage');
-          if (savedCoverage) {
-            const map = JSON.parse(savedCoverage);
-            this.simulators.forEach(s => {
-              if (map[s.id]) s.tier = map[s.id];
-            });
-          }
-        } catch (e) {}
+        this.simulators = this.loadActiveSimulators();
         this.categories = SIMULATOR_CATEGORIES;
         this.subManager = new SubscriptionManager();
         this.userManager = new UserManager();
@@ -1325,6 +1327,40 @@
         this.currentFrame = isNative ? 'fullscreen' : 'iphone';
         this.adminPin = '';
         this.lastBackPress = 0;
+      }
+
+      loadActiveSimulators() {
+        let list = SIMULATORS;
+        let archivedIds = new Set();
+        try {
+          const archived = localStorage.getItem('cch_archived_modules');
+          if (archived) {
+            archivedIds = new Set(JSON.parse(archived).map(a => a.id));
+          }
+        } catch (e) {}
+
+        try {
+          const live = localStorage.getItem('cch_live_published_modules');
+          if (live) {
+            list = JSON.parse(live);
+          }
+        } catch (e) {}
+
+        // Filter out any archived / deactivated simulators
+        list = list.filter(s => !archivedIds.has(s.id));
+
+        // Synchronize tier from coverage matrix
+        try {
+          const savedCoverage = localStorage.getItem('critical_care_module_coverage');
+          if (savedCoverage) {
+            const map = JSON.parse(savedCoverage);
+            list.forEach(s => {
+              if (map[s.id]) s.tier = map[s.id];
+            });
+          }
+        } catch (e) {}
+
+        return list;
       }
 
       init() {
@@ -1550,10 +1586,13 @@
 
         container.innerHTML = this.categories.map(cat => {
           const isActive = cat.id === this.activeCategory;
+          const count = cat.id === 'all' 
+            ? this.simulators.length 
+            : this.simulators.filter(s => s.category === cat.id).length;
           return `
             <button class="chip-btn ${isActive ? 'active' : ''}" data-cat-id="${cat.id}">
               <span>${cat.name}</span>
-              <span class="chip-count">${cat.count}</span>
+              <span class="chip-count">${count}</span>
             </button>
           `;
         }).join('');
@@ -1597,34 +1636,37 @@
       }
 
       createSimulatorCardHtml(sim, isPro) {
-        const isVIP = this.subManager.currentTier === 'vip';
+        const isUserSubscribed = this.subManager.isUserSubscribed();
         const isFree = sim.tier === 'free';
-        const isVipTier = sim.tier === 'vip';
         let isUnlocked = false;
 
-        if (isFree) isUnlocked = true;
-        else if (isVipTier) isUnlocked = isVIP;
-        else isUnlocked = isPro || isVIP;
+        // Subscribed users (Pro, VIP, Active Trial, Admin) unlock ALL modules unconditionally
+        if (isUserSubscribed) {
+          isUnlocked = true;
+        } else {
+          // Free / guest accounts can only access modules designated as Free
+          isUnlocked = isFree;
+        }
 
         const isFav = this.favorites.includes(sim.id);
 
         let badgeClass = 'badge-pro-locked';
         let badgeText = '🔒 PRO LOCKED';
-        if (isFree) {
+        if (isUserSubscribed) {
+          badgeClass = 'badge-pro-unlocked';
+          badgeText = this.subManager.currentTier === 'vip' ? '⭐ VIP ALL-ACCESS' : '💎 INCLUDED IN PLAN';
+        } else if (isFree) {
           badgeClass = 'badge-free';
           badgeText = '🟢 FREE ACCESS';
-        } else if (isVipTier) {
-          badgeClass = isVIP ? 'badge-vip' : 'badge-pro-locked';
-          badgeText = isVIP ? '⭐ VIP UNLOCKED' : '⭐ VIP PASS ONLY';
-        } else if (isUnlocked) {
-          badgeClass = 'badge-pro-unlocked';
-          badgeText = '💎 PRO UNLOCKED';
+        } else if (sim.tier === 'vip') {
+          badgeClass = 'badge-vip';
+          badgeText = '⭐ VIP PASS ONLY';
         }
 
         let btnClass = isUnlocked ? 'btn-launch' : 'btn-unlock';
         let btnContent = isUnlocked 
           ? '<span>Launch Simulator</span><span class="arrow">→</span>' 
-          : (isVipTier ? '<span>VIP Pass Required</span><span class="lock-icon">⭐</span>' : '<span>Unlock with Pro</span><span class="lock-icon">🔒</span>');
+          : (sim.tier === 'vip' ? '<span>VIP Pass Required</span><span class="lock-icon">⭐</span>' : '<span>Unlock with Pro</span><span class="lock-icon">🔒</span>');
 
         return `
           <div class="sim-card ${isUnlocked ? 'unlocked' : 'locked'}" data-sim-id="${sim.id}">
@@ -1769,16 +1811,15 @@
         const sim = this.simulators.find(s => s.id === simId);
         if (!sim) return;
 
-        const isVIP = this.subManager.currentTier === 'vip';
-        const isPro = this.subManager.isPro();
+        const isUserSubscribed = this.subManager.isUserSubscribed();
         let isUnlocked = false;
 
-        if (sim.tier === 'free') {
+        // Subscribed users (Pro, VIP, Active Trial, Admin) have unrestricted access to ALL simulators
+        if (isUserSubscribed) {
           isUnlocked = true;
-        } else if (sim.tier === 'vip') {
-          isUnlocked = isVIP;
         } else {
-          isUnlocked = isPro || isVIP;
+          // Unsubscribed / Guest users only have access to free modules
+          isUnlocked = (sim.tier === 'free');
         }
 
         if (!isUnlocked) {
@@ -2117,21 +2158,13 @@
           channel.onmessage = (event) => {
             const data = event.data;
             if (!data) return;
+            console.log('[HUB BROADCAST] Received:', data.type, data);
             if (data.type === 'PRICING_UPDATED' && data.settings) {
               this.subManager.saveSettings(data.settings);
               this.showToast('🔔 Live Subscription Prices Updated by Owner', 'info');
-            } else if (data.type === 'MODULE_TIERS_UPDATED') {
-              const coverageMap = data.coverage || {};
-              if (data.modules && Array.isArray(data.modules)) {
-                data.modules.forEach(m => { coverageMap[m.id] = m.tier; });
-              }
-              this.simulators.forEach(s => {
-                if (coverageMap[s.id]) s.tier = coverageMap[s.id];
-              });
-              localStorage.setItem('critical_care_module_coverage', JSON.stringify(coverageMap));
-              this.renderSimulatorsHub();
-              this.renderFavoritesView();
-              this.showToast('🛡️ Simulator Access Tiers Updated by Owner', 'info');
+            } else if (data.type === 'CATALOG_UPDATED' || data.type === 'MODULE_TIERS_UPDATED' || data.type === 'MODULES_ARCHIVED' || data.type === 'MODULES_RESTORED' || data.type === 'MODULES_RESTORED_ALL' || data.type === 'MODULES_DELETED') {
+              console.log('[HUB BROADCAST] Refreshing simulator catalog...');
+              this._debouncedRefreshCatalog();
             } else if (data.type === 'PUSH_NOTIFICATION' && data.notification) {
               this.showInAppNotificationBanner(data.notification);
             }
@@ -2140,6 +2173,35 @@
       }
 
       initFirebaseListeners() {
+        // Debounced refresh to prevent rapid-fire re-renders from multiple events
+        let refreshTimer = null;
+        const refreshSimulatorsCatalog = (source) => {
+          console.log(`[HUB SYNC] Catalog refresh triggered by: ${source}`);
+          clearTimeout(refreshTimer);
+          refreshTimer = setTimeout(() => {
+            this.simulators = this.loadActiveSimulators();
+            console.log(`[HUB SYNC] Active simulators count: ${this.simulators.length}`);
+            this.renderCategoryChips();
+            this.renderSimulatorsHub();
+            this.renderFavoritesView();
+            this.showToast('🛡️ Simulator Catalog Updated by Owner', 'info');
+          }, 150);
+        };
+        this._debouncedRefreshCatalog = () => refreshSimulatorsCatalog('BroadcastChannel');
+
+        // Real-time Firestore catalog & archive stream (works cross-domain & on mobile devices)
+        window.addEventListener('cch:catalog-updated', () => refreshSimulatorsCatalog('Firestore:catalog-updated'));
+        window.addEventListener('cch:modules-updated', () => refreshSimulatorsCatalog('Firestore:modules-updated'));
+        window.addEventListener('cch:archived-updated', () => refreshSimulatorsCatalog('Firestore:archived-updated'));
+
+        // Native instant storage event for parallel tabs open on the same origin
+        window.addEventListener('storage', (e) => {
+          if (e.key === 'cch_archived_modules' || e.key === 'cch_live_published_modules' || e.key === 'critical_care_module_coverage') {
+            console.log(`[HUB SYNC] localStorage '${e.key}' changed from another tab`);
+            refreshSimulatorsCatalog(`storage:${e.key}`);
+          }
+        });
+
         window.addEventListener('cch:auth-changed', (e) => {
           const user = e.detail;
           if (user && user.isLoggedIn) {
@@ -2182,10 +2244,7 @@
         window.addEventListener('cch:coverage-updated', (e) => {
           const coverageMap = e.detail;
           if (coverageMap) {
-            this.simulators.forEach(s => {
-              if (coverageMap[s.id]) s.tier = coverageMap[s.id];
-            });
-            localStorage.setItem('critical_care_module_coverage', JSON.stringify(coverageMap));
+            this.simulators = this.loadActiveSimulators();
             this.renderSimulatorsHub();
             this.renderFavoritesView();
             this.showToast('🛡️ Simulator Access Tiers Synced from Cloud', 'info');

@@ -4,6 +4,12 @@ import { modulesService } from '../../app/js/services/modules-service.js';
 class AdminDashboardController {
   constructor() {
     this.currentPreviewModule = null;
+    // Persistent BroadcastChannel for cross-tab communication
+    try {
+      this._broadcastChannel = new BroadcastChannel('critical-care-cloud');
+    } catch (e) {
+      this._broadcastChannel = null;
+    }
     this.init();
   }
 
@@ -198,16 +204,10 @@ class AdminDashboardController {
           <span class="category-pill">${mod.category}</span>
         </td>
         <td class="col-tier">
-          <span class="mobile-label">Paywall:</span>
-          <div class="tier-control-group">
-            <label class="switch">
-              <input type="checkbox" class="tier-toggle" data-id="${mod.id}" ${mod.tier === 'pro' ? 'checked' : ''}>
-              <span class="slider"></span>
-            </label>
-            <span class="badge ${mod.tier === 'pro' ? 'badge-pro' : 'badge-free'}">
-              ${mod.tier === 'pro' ? 'PRO LOCKED' : 'FREE ACCESS'}
-            </span>
-          </div>
+          <span class="mobile-label">Tier:</span>
+          <span class="badge ${mod.tier === 'free' ? 'badge-free' : (mod.tier === 'vip' ? 'badge-vip' : 'badge-pro')}">
+            ${mod.tier === 'free' ? '🟢 FREE ACCESS' : (mod.tier === 'vip' ? '⭐ VIP ONLY' : '💎 PRO SUBSCRIBER')}
+          </span>
         </td>
         <td class="col-actions">
           <div class="action-btn-group">
@@ -222,16 +222,6 @@ class AdminDashboardController {
       </tr>
     `).join('');
 
-    // Attach Tier Toggle Listener
-    tbody.querySelectorAll('.tier-toggle').forEach(input => {
-      input.addEventListener('change', () => {
-        const id = input.getAttribute('data-id');
-        const newTier = input.checked ? 'pro' : 'free';
-        modulesService.toggleTier(id, newTier);
-        this.showToast(`Updated '${id}' to ${newTier.toUpperCase()}`);
-      });
-    });
-
     // Attach Test button
     tbody.querySelectorAll('.test-live-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -240,15 +230,35 @@ class AdminDashboardController {
       });
     });
 
-    // Attach Archive / Remove button
+    // Attach Archive / Remove button — single-click with undo toast
     tbody.querySelectorAll('.archive-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
         const name = btn.getAttribute('data-name');
-        if (confirm(`Remove "${name}" from the live mobile app? You can restore it anytime from the "Archived Simulators" tab.`)) {
-          modulesService.archiveModule(id);
-          this.showToast(`📦 "${name}" removed from live app and moved to Archive.`, 'info');
-        }
+
+        console.log(`[ARCHIVE] Archiving module "${name}" (id: ${id})`);
+
+        // Execute archive immediately
+        modulesService.archiveModule(id);
+        this.broadcastCloudUpdate('MODULES_ARCHIVED', { id });
+        this.renderPublishedModules();
+        this.renderArchivedModules();
+        this.renderModuleCoverageMatrix();
+
+        console.log('[ARCHIVE] Module archived, localStorage updated, broadcast sent.');
+        console.log('[ARCHIVE] Published count:', modulesService.getPublishedModules().length);
+        console.log('[ARCHIVE] Archived count:', modulesService.getArchivedModules().length);
+
+        // Show undo toast for 6 seconds
+        this.showUndoToast(`📦 "${name}" archived from live app.`, () => {
+          console.log(`[ARCHIVE UNDO] Restoring "${name}" (id: ${id})`);
+          modulesService.restoreModule(id);
+          this.broadcastCloudUpdate('MODULES_RESTORED', { id });
+          this.renderPublishedModules();
+          this.renderArchivedModules();
+          this.renderModuleCoverageMatrix();
+          this.showToast(`♻️ "${name}" restored back to live app!`, 'success');
+        });
       });
     });
   }
@@ -302,23 +312,46 @@ class AdminDashboardController {
       </tr>
     `).join('');
 
-    // Attach Restore Listener
+    // Attach Restore Listener (instant UI refresh & broadcast)
     tbody.querySelectorAll('.restore-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
         const restored = modulesService.restoreModule(id);
+        this.broadcastCloudUpdate('MODULES_RESTORED', { id });
+        this.renderArchivedModules();
+        this.renderPublishedModules();
+        this.renderModuleCoverageMatrix();
         this.showToast(`🎉 "${restored.title}" restored back to the live app!`, 'success');
       });
     });
 
-    // Attach Permanent Delete Listener
+    // Attach Permanent Delete Listener (Inline 2-step confirmation)
     tbody.querySelectorAll('.perm-delete-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
         const name = btn.getAttribute('data-name');
-        if (confirm(`Permanently delete "${name}"? This cannot be undone.`)) {
+
+        if (btn.dataset.confirming === 'true') {
           modulesService.permanentlyDeleteModule(id);
-          this.showToast(`🗑️ "${name}" permanently deleted.`, 'info');
+          this.broadcastCloudUpdate('MODULES_DELETED', { id });
+          this.renderArchivedModules();
+          this.renderPublishedModules();
+          this.renderGitHubQueue();
+          this.renderModuleCoverageMatrix();
+          this.showToast(`🗑️ "${name}" deleted from archive (preserved in Review Queue).`, 'info');
+        } else {
+          btn.dataset.confirming = 'true';
+          btn.innerHTML = '⚠️ Confirm Delete';
+          btn.style.background = '#991b1b';
+          btn.style.borderColor = '#ef4444';
+          setTimeout(() => {
+            if (btn && btn.dataset.confirming === 'true') {
+              btn.dataset.confirming = 'false';
+              btn.innerHTML = '🗑️ Delete';
+              btn.style.background = '';
+              btn.style.borderColor = '';
+            }
+          }, 4000);
         }
       });
     });
@@ -584,6 +617,35 @@ class AdminDashboardController {
       });
     }
 
+    // Emergency 1-Click Library Restore (Recovers all 16 canonical simulators if deleted by mistake)
+    const restoreAllBtn = document.getElementById('restoreAllLibraryBtn');
+    if (restoreAllBtn) {
+      restoreAllBtn.addEventListener('click', () => {
+        if (restoreAllBtn.dataset.confirming === 'true') {
+          const count = modulesService.restoreAllCanonicalModules();
+          this.broadcastCloudUpdate('MODULES_RESTORED_ALL', { count });
+          this.renderPublishedModules();
+          this.renderArchivedModules();
+          this.renderModuleCoverageMatrix();
+          this.showToast(`🎉 Restored ${count} simulators to the live app! All 16 simulators active.`, 'success');
+          restoreAllBtn.dataset.confirming = 'false';
+          restoreAllBtn.innerHTML = '🔄 Restore Full Simulator Library (16 Modules)';
+          restoreAllBtn.style.background = '';
+        } else {
+          restoreAllBtn.dataset.confirming = 'true';
+          restoreAllBtn.innerHTML = '⚠️ Click to Confirm Full Restore';
+          restoreAllBtn.style.background = 'rgba(56, 189, 248, 0.2)';
+          setTimeout(() => {
+            if (restoreAllBtn && restoreAllBtn.dataset.confirming === 'true') {
+              restoreAllBtn.dataset.confirming = 'false';
+              restoreAllBtn.innerHTML = '🔄 Restore Full Simulator Library (16 Modules)';
+              restoreAllBtn.style.background = '';
+            }
+          }, 4000);
+        }
+      });
+    }
+
     // Admin Auth Form & Lock Portal
     const adminForm = document.getElementById('adminLoginForm');
     if (adminForm) {
@@ -685,12 +747,46 @@ class AdminDashboardController {
 
   // --- TAB 5: SUBSCRIPTIONS & PRICING METHODS ---
   broadcastCloudUpdate(type, payload) {
+    const message = { type, ...payload, timestamp: Date.now() };
+    console.log(`[BROADCAST] Sending ${type}`, message);
     try {
-      const channel = new BroadcastChannel('critical-care-cloud');
-      channel.postMessage({ type, ...payload, timestamp: Date.now() });
+      if (this._broadcastChannel) {
+        this._broadcastChannel.postMessage(message);
+      } else {
+        const channel = new BroadcastChannel('critical-care-cloud');
+        channel.postMessage(message);
+      }
     } catch (e) {
       console.warn('Broadcast error:', e);
     }
+  }
+
+  showUndoToast(message, undoCallback) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.style.cssText = 'background: #1e3a5f; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: white; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);';
+    toast.innerHTML = `
+      <span style="flex:1">${message}</span>
+      <button id="undoArchiveBtn" style="background:#10b981; color:white; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; font-weight:700; font-size:12px;">↩ UNDO</button>
+    `;
+    container.appendChild(toast);
+
+    let undone = false;
+    toast.querySelector('#undoArchiveBtn').addEventListener('click', () => {
+      undone = true;
+      undoCallback();
+      toast.remove();
+    });
+
+    setTimeout(() => {
+      if (!undone) {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }
+    }, 6000);
   }
 
   renderPricingSettings() {
@@ -776,7 +872,9 @@ class AdminDashboardController {
     } catch (e) {}
 
     tbody.innerHTML = modules.map((mod, index) => {
-      const currentTier = savedCoverage[mod.id] || mod.tier || 'pro';
+      // Prioritize mod.tier if set, otherwise fallback to savedCoverage, then 'pro'
+      const currentTier = mod.tier || savedCoverage[mod.id] || 'pro';
+      savedCoverage[mod.id] = currentTier; // ensure sync
       return `
         <tr class="admin-row-card">
           <td class="col-index">
@@ -806,9 +904,9 @@ class AdminDashboardController {
       `;
     }).join('');
 
-    // Attach immediate badge update on select change
+    // Attach immediate sync on select change (never reverts or inverts)
     tbody.querySelectorAll('.coverage-select').forEach(sel => {
-      sel.addEventListener('change', (e) => {
+      sel.addEventListener('change', async () => {
         const id = sel.getAttribute('data-id');
         const val = sel.value;
         const badgeSpan = document.getElementById(`badge-${id}`);
@@ -817,6 +915,36 @@ class AdminDashboardController {
           else if (val === 'vip') badgeSpan.innerHTML = '<span class="badge badge-vip">VIP ONLY</span>';
           else badgeSpan.innerHTML = '<span class="badge badge-pro">PRO SUBSCRIBER</span>';
         }
+
+        // 1. Immediately persist to localStorage
+        savedCoverage[id] = val;
+        try {
+          localStorage.setItem('critical_care_module_coverage', JSON.stringify(savedCoverage));
+        } catch (e) {}
+
+        // 2. Immediately persist to modulesService
+        try {
+          const published = modulesService.getPublishedModules();
+          const found = published.find(m => m.id === id);
+          if (found) {
+            found.tier = val;
+            found.badgeText = val === 'free' ? 'FREE ACCESS' : (val === 'vip' ? 'VIP ONLY' : 'PRO LOCKED');
+            found.badgeColor = val === 'free' ? 'emerald' : (val === 'vip' ? 'purple' : 'amber');
+            modulesService._savePublishedModules(published);
+          }
+        } catch (e) {}
+
+        // 3. Immediately persist to Cloud Firestore if connected
+        if (firebaseService && firebaseService.saveLiveCoverageMatrix) {
+          try {
+            await firebaseService.saveLiveCoverageMatrix(savedCoverage);
+          } catch (e) {}
+        }
+
+        // 4. Broadcast live update to mobile app and other tabs
+        this.broadcastCloudUpdate('MODULE_TIERS_UPDATED', { modules: [{ id, tier: val }], coverage: savedCoverage });
+        this.renderPublishedModules();
+        this.showToast(`🛡️ Tier for "${id}" updated to ${val.toUpperCase()} and synchronized!`);
       });
     });
   }

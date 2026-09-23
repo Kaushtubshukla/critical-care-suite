@@ -146,7 +146,7 @@
           <div>
             <h2 class="card-title">Live Published Medical Simulators</h2>
             <p style="font-size: 12.5px; color: var(--admin-text-muted); margin-top: 2px;">
-              Toggle Free vs. Pro access or remove simulators from the live app (moves them to archive).
+              Review active simulators or archive them from the live app. Access tiers (Free vs. Pro) are managed in the Subscription Matrix tab.
             </p>
           </div>
         </div>
@@ -158,7 +158,7 @@
                 <th>#</th>
                 <th>Simulator Name</th>
                 <th>Specialty</th>
-                <th>Paywall Access Level</th>
+                <th>Access Tier</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -179,6 +179,11 @@
             <p style="font-size: 12.5px; color: var(--admin-text-muted); margin-top: 2px;">
               Simulators removed from the live mobile app. Restore any simulator back to active service with 1 click.
             </p>
+          </div>
+          <div>
+            <button class="btn btn-outline" id="restoreAllLibraryBtn" style="font-size: 12px; padding: 6px 14px; border-color: #38bdf8; color: #38bdf8;">
+              🔄 Restore Full Simulator Library (16 Modules)
+            </button>
           </div>
         </div>
 
@@ -483,6 +488,6 @@
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <script type="module" src="js/admin.js?v=1.2"></script>
+  <script type="module" src="js/admin.js?v=2.12.2"></script>
 </body>
 </html>

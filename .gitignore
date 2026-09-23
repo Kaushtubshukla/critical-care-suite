@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+www/
+public_admin/
+android/app/build/
+android/.gradle/
+ios/App/build/
+ios/App/Pods/
+ios/App/DerivedData/
+firebase-debug.log
+
+# APK builds (download fresh from CI or build locally)
+*.apk
+
+# Firebase
+.firebase/
+.firebaserc
+
+# IDE & OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Generated documents (keep originals only)
+Critical_Care_App_Project_Proposal.html
+
+# Debug / scratch scripts
+check_imports.js
+generate_documents.py
