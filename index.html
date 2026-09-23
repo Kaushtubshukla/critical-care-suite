@@ -94,7 +94,7 @@
               <button type="button" class="auth-tab-choice" id="gkTabLogin">Sign In</button>
             </div>
 
-            <form id="gatekeeperAuthForm">
+            <form id="gatekeeperAuthForm" novalidate>
               <!-- Professional Medical Role Picker (Reference Image 2) -->
               <div id="gkRoleGroup">
                 <label class="auth-form-label">Professional Medical Role</label>
@@ -2461,6 +2461,42 @@
         const instFieldGroup = document.getElementById('institutionFieldGroup');
         const setupSubmitBtn = document.getElementById('setupSubmitBtn');
 
+        // Mode switchers for Gatekeeper Overlay (Initial Screen)
+        const gkTabReg = document.getElementById('gkTabRegister');
+        const gkTabLog = document.getElementById('gkTabLogin');
+        const gkRoleGroup = document.getElementById('gkRoleGroup');
+        const gkNameGroup = document.getElementById('gkNameGroup');
+        const gkInstGroup = document.getElementById('gkInstitutionGroup');
+        const gkSubmitBtn = document.getElementById('gkSubmitBtn');
+        const gkForgotLink = document.getElementById('gkForgotPasswordLink');
+        const gkFullNameInput = document.getElementById('gkFullNameInput');
+
+        if (gkTabReg && gkTabLog) {
+          gkTabReg.addEventListener('click', () => {
+            gkTabReg.classList.add('active');
+            gkTabLog.classList.remove('active');
+            if (gkRoleGroup) gkRoleGroup.style.display = 'block';
+            if (gkNameGroup) gkNameGroup.style.display = 'block';
+            if (gkInstGroup) gkInstGroup.style.display = 'block';
+            if (gkForgotLink) gkForgotLink.style.display = 'none';
+            if (gkFullNameInput) gkFullNameInput.setAttribute('required', 'required');
+            if (gkSubmitBtn) gkSubmitBtn.textContent = 'Complete Setup & Enter Suite';
+            clearAuthError();
+          });
+          gkTabLog.addEventListener('click', () => {
+            gkTabLog.classList.add('active');
+            gkTabReg.classList.remove('active');
+            if (gkRoleGroup) gkRoleGroup.style.display = 'none';
+            if (gkNameGroup) gkNameGroup.style.display = 'none';
+            if (gkInstGroup) gkInstGroup.style.display = 'none';
+            if (gkForgotLink) gkForgotLink.style.display = 'inline';
+            if (gkFullNameInput) gkFullNameInput.removeAttribute('required');
+            if (gkSubmitBtn) gkSubmitBtn.textContent = 'Sign In to Account';
+            clearAuthError();
+          });
+        }
+
+        // Mode switchers inside Auth Modal (Header Profile Screen)
         if (tabModeReg && tabModeLog) {
           const nameInput = document.getElementById('setupFullNameInput');
           tabModeReg.addEventListener('click', () => {
@@ -2810,6 +2846,39 @@
         const modalGoogleBtn = document.getElementById('modalGoogleAuthBtn');
         if (modalGoogleBtn) {
           modalGoogleBtn.addEventListener('click', () => performGoogleSignIn(modalGoogleBtn));
+        }
+
+        // Initial Full-Screen Gatekeeper Form Submission
+        const gatekeeperAuthForm = document.getElementById('gatekeeperAuthForm');
+        if (gatekeeperAuthForm) {
+          gatekeeperAuthForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const isReg = gkTabReg && gkTabReg.classList.contains('active');
+            const emailInput = document.getElementById('gkEmailInput');
+            const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+            const passInput = document.getElementById('gkPasswordInput');
+            const pass = passInput ? passInput.value : '';
+            const roleSelect = document.getElementById('gkRoleSelect');
+            const role = (email === 'admin@criticalcare.med') ? 'admin' : (roleSelect ? roleSelect.value : 'Doctor');
+            const nameInput = document.getElementById('gkFullNameInput');
+            let name = nameInput ? nameInput.value.trim() : (isReg ? 'Doctor' : email.split('@')[0]);
+            const instInput = document.getElementById('gkInstitutionInput');
+            const inst = instInput ? instInput.value.trim() : '';
+
+            if (role === 'Doctor' && name && !name.toLowerCase().startsWith('dr')) {
+              name = 'Dr. ' + name;
+            }
+
+            performAuthAction('gatekeeper', isReg, email, pass, name, role, inst, gkSubmitBtn);
+          });
+        }
+
+        if (gkForgotLink) {
+          gkForgotLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            const emailInput = document.getElementById('gkEmailInput');
+            forgotPasswordHandler(emailInput);
+          });
         }
 
         // Account Setup form inside Auth Modal
