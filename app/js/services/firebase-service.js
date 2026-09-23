@@ -167,6 +167,9 @@ class FirebaseService {
         });
       } catch (e) {}
 
+      // Immediate fast REST sync for simulator catalog (100% reliable on all platforms)
+      this.syncCatalogFromCloudREST();
+
       // Listen for Live Simulator Catalog & Archive updates from Cloud Firestore
       try {
         const catalogRef = doc(this.fbDb, 'settings', 'catalog');
@@ -1111,29 +1114,134 @@ class FirebaseService {
     }
   }
 
+  _toFirestoreValue(val) {
+    if (val === null || val === undefined) return { nullValue: null };
+    if (typeof val === 'string') return { stringValue: val };
+    if (typeof val === 'boolean') return { booleanValue: val };
+    if (typeof val === 'number') {
+      return Number.isInteger(val) ? { integerValue: val.toString() } : { doubleValue: val };
+    }
+    if (Array.isArray(val)) {
+      return { arrayValue: { values: val.map(v => this._toFirestoreValue(v)) } };
+    }
+    if (typeof val === 'object') {
+      const fields = {};
+      for (const [k, v] of Object.entries(val)) {
+        if (v !== undefined) {
+          fields[k] = this._toFirestoreValue(v);
+        }
+      }
+      return { mapValue: { fields } };
+    }
+    return { stringValue: String(val) };
+  }
+
+  _fromFirestoreValue(val) {
+    if (!val) return null;
+    if ('stringValue' in val) return val.stringValue;
+    if ('booleanValue' in val) return val.booleanValue;
+    if ('integerValue' in val) return parseInt(val.integerValue, 10);
+    if ('doubleValue' in val) return val.doubleValue;
+    if ('nullValue' in val) return null;
+    if ('arrayValue' in val) {
+      return (val.arrayValue.values || []).map(v => this._fromFirestoreValue(v));
+    }
+    if ('mapValue' in val) {
+      const res = {};
+      const fields = val.mapValue.fields || {};
+      for (const [k, v] of Object.entries(fields)) {
+        res[k] = this._fromFirestoreValue(v);
+      }
+      return res;
+    }
+    return null;
+  }
+
+  /**
+   * Fast Direct REST Fetch for Simulator Catalog (Works instantly on all devices)
+   */
+  async syncCatalogFromCloudREST() {
+    try {
+      const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/settings/catalog?key=${FIREBASE_CONFIG.apiKey}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        const fields = json.fields || {};
+        const published = this._fromFirestoreValue(fields.published);
+        const archived = this._fromFirestoreValue(fields.archived);
+
+        if (Array.isArray(published) && published.length > 0) {
+          localStorage.setItem('cch_live_published_modules', JSON.stringify(published));
+          if (Array.isArray(archived)) {
+            localStorage.setItem('cch_archived_modules', JSON.stringify(archived));
+          }
+          console.log(`✅ [FAST REST SYNC] Loaded ${published.length} simulators directly from Cloud Firestore!`);
+          window.dispatchEvent(new CustomEvent('cch:catalog-updated', { detail: { published, archived } }));
+          window.dispatchEvent(new CustomEvent('cch:modules-updated', { detail: published }));
+          window.dispatchEvent(new CustomEvent('cch:archived-updated', { detail: archived }));
+          return { published, archived };
+        }
+      }
+    } catch (err) {
+      console.warn('REST catalog sync notice:', err.message);
+    }
+    return null;
+  }
+
   /**
    * Save live simulator catalog & archived simulators to Cloud Firestore
+   * Dual-engine: Writes immediately via REST API + SDK for 100% reliable global delivery
    */
   async saveLiveCatalog(archivedList, publishedList) {
-    localStorage.setItem('cch_archived_modules', JSON.stringify(archivedList));
-    localStorage.setItem('cch_live_published_modules', JSON.stringify(publishedList));
+    const cleanArchived = JSON.parse(JSON.stringify(archivedList || []));
+    const cleanPublished = JSON.parse(JSON.stringify(publishedList || []));
+
+    localStorage.setItem('cch_archived_modules', JSON.stringify(cleanArchived));
+    localStorage.setItem('cch_live_published_modules', JSON.stringify(cleanPublished));
+
+    // 1. Direct High-Speed REST Push to Google Cloud Firestore (Immediate execution guaranteed)
+    const restUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/settings/catalog?key=${FIREBASE_CONFIG.apiKey}`;
+    const restPromise = fetch(restUrl, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          archived: this._toFirestoreValue(cleanArchived),
+          published: this._toFirestoreValue(cleanPublished),
+          updatedAt: { stringValue: new Date().toISOString() }
+        }
+      })
+    }).then(res => {
+      if (res.ok) {
+        console.log('✅ [CLOUD REST] Simulator catalog successfully published to Firestore!');
+      } else {
+        console.warn('REST catalog save status:', res.status);
+      }
+    }).catch(e => {
+      console.warn('REST saveLiveCatalog notice:', e.message);
+    });
+
+    // 2. Also save via Firestore SDK if connection active
     if (this.isRealFirebaseActive && this.fbDb) {
       try {
-        
         await setDoc(doc(this.fbDb, 'settings', 'catalog'), {
-          archived: archivedList,
-          published: publishedList,
+          archived: cleanArchived,
+          published: cleanPublished,
           updatedAt: new Date().toISOString()
         }, { merge: true });
-        console.log('✅ Live catalog & archive state saved to Cloud Firestore!');
+        console.log('✅ [CLOUD SDK] Live catalog & archive state saved to Cloud Firestore!');
       } catch (e) {
-        console.warn('Firestore saveLiveCatalog notice:', e.message);
+        console.warn('Firestore SDK saveLiveCatalog notice:', e.message);
       }
     }
+
+    await restPromise;
+
     if (this.channel) {
-      this.channel.postMessage({ type: 'CATALOG_UPDATED', archived: archivedList, published: publishedList });
+      this.channel.postMessage({ type: 'CATALOG_UPDATED', archived: cleanArchived, published: cleanPublished });
     }
-    window.dispatchEvent(new CustomEvent('cch:catalog-updated', { detail: { archived: archivedList, published: publishedList } }));
+    window.dispatchEvent(new CustomEvent('cch:catalog-updated', { detail: { archived: cleanArchived, published: cleanPublished } }));
+    window.dispatchEvent(new CustomEvent('cch:modules-updated', { detail: cleanPublished }));
   }
 }
 

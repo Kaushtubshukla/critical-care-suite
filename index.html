@@ -1417,6 +1417,49 @@
         this.initHardwareBackButton();
         this.initCloudBroadcast();
         this.initFirebaseListeners();
+        this.syncDirectCloudCatalog();
+      }
+
+      async syncDirectCloudCatalog() {
+        try {
+          const url = 'https://firestore.googleapis.com/v1/projects/critical-care-hub/databases/(default)/documents/settings/catalog?key=AIzaSyC62pnq409i3OlwWCz6U3wM3TuzSW6oDCs';
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            const fields = data.fields || {};
+            
+            const parseVal = (val) => {
+              if (!val) return null;
+              if ('stringValue' in val) return val.stringValue;
+              if ('booleanValue' in val) return val.booleanValue;
+              if ('integerValue' in val) return parseInt(val.integerValue, 10);
+              if ('doubleValue' in val) return val.doubleValue;
+              if ('nullValue' in val) return null;
+              if ('arrayValue' in val) return (val.arrayValue.values || []).map(parseVal);
+              if ('mapValue' in val) {
+                const r = {};
+                for (const [k, v] of Object.entries(val.mapValue.fields || {})) r[k] = parseVal(v);
+                return r;
+              }
+              return null;
+            };
+
+            const published = parseVal(fields.published);
+            const archived = parseVal(fields.archived);
+
+            if (Array.isArray(published) && published.length > 0) {
+              localStorage.setItem('cch_live_published_modules', JSON.stringify(published));
+              if (Array.isArray(archived)) localStorage.setItem('cch_archived_modules', JSON.stringify(archived));
+              this.simulators = this.loadActiveSimulators();
+              this.renderCategoryChips();
+              this.renderSimulatorsHub();
+              this.renderFavoritesView();
+              console.log('⚡ [FAST CLOUD SYNC] Loaded latest catalog from Cloud Firestore!');
+            }
+          }
+        } catch (e) {
+          console.warn('Fast cloud sync notice:', e);
+        }
       }
 
       loadFavorites() {
