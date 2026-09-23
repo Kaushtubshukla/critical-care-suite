@@ -714,12 +714,18 @@
                   <button type="button" class="setup-tab-btn" id="tabModeLogin">Sign In</button>
                 </div>
 
-                <!-- Registration Form -->
-                <form id="accountSetupForm">
+                <!-- Registration & Login Form -->
+                <form id="accountSetupForm" novalidate>
+                  <!-- In-Modal Error Alert -->
+                  <div class="auth-error-alert" id="authErrorAlert" style="display: none; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; color: #991b1b; font-size: 12.5px; align-items: center; gap: 8px;">
+                    <span style="font-size: 15px;">⚠️</span>
+                    <span id="authErrorMessage" style="flex: 1; line-height: 1.4;"></span>
+                  </div>
+
                   <!-- Role Picker matching Reference Image 2 -->
                   <div class="setup-form-group" id="rolePickerGroup">
                     <label>Professional Role</label>
-                    <select class="setup-select" id="setupRoleSelect" required>
+                    <select class="setup-select" id="setupRoleSelect">
                       <option value="Doctor" selected>Doctor</option>
                       <option value="Physician Assistant">Physician Assistant</option>
                       <option value="Nurse/NP">Nurse/NP</option>
@@ -733,17 +739,17 @@
 
                   <div class="setup-form-group" id="nameFieldGroup">
                     <label>Full Name</label>
-                    <input type="text" id="setupFullNameInput" class="setup-input" placeholder="e.g. Dr. Rajesh Sharma" required value="Dr. Resident">
+                    <input type="text" id="setupFullNameInput" class="setup-input" placeholder="e.g. Dr. Rajesh Sharma">
                   </div>
 
                   <div class="setup-form-group">
                     <label>Email Address</label>
-                    <input type="email" id="authEmailInput" class="setup-input" placeholder="physician@hospital.org" required value="doctor@hospital.org">
+                    <input type="email" id="authEmailInput" class="setup-input" placeholder="physician@hospital.org" autocomplete="email">
                   </div>
 
                   <div class="setup-form-group">
                     <label>Password</label>
-                    <input type="password" id="authPassInput" class="setup-input" placeholder="••••••••" required value="password123">
+                    <input type="password" id="authPassInput" class="setup-input" placeholder="Min. 8 characters" autocomplete="current-password">
                   </div>
 
                   <div class="setup-form-group" id="institutionFieldGroup">
@@ -2217,6 +2223,7 @@
               this.subManager.currentTier = user.tier;
               this.subManager.saveSubscriptionState(user.tier);
             }
+            this.hideAuthModal();
             this.updateUserUI();
             this.updateSubscriptionUI();
           } else if (!user) {
@@ -2455,6 +2462,7 @@
         const setupSubmitBtn = document.getElementById('setupSubmitBtn');
 
         if (tabModeReg && tabModeLog) {
+          const nameInput = document.getElementById('setupFullNameInput');
           tabModeReg.addEventListener('click', () => {
             tabModeReg.classList.add('active');
             tabModeLog.classList.remove('active');
@@ -2462,6 +2470,7 @@
             if (nameFieldGroup) nameFieldGroup.style.display = 'block';
             if (instFieldGroup) instFieldGroup.style.display = 'block';
             if (setupSubmitBtn) setupSubmitBtn.textContent = 'Complete Setup & Start';
+            clearAuthError();
           });
           tabModeLog.addEventListener('click', () => {
             tabModeLog.classList.add('active');
@@ -2470,13 +2479,14 @@
             if (nameFieldGroup) nameFieldGroup.style.display = 'none';
             if (instFieldGroup) instFieldGroup.style.display = 'none';
             if (setupSubmitBtn) setupSubmitBtn.textContent = 'Sign In to Account';
+            clearAuthError();
           });
         }
 
         // Reusable Error Display Helpers for Form Feedback
         const showAuthError = (message) => {
-          const alertEl = document.getElementById('gkAuthErrorAlert');
-          const msgEl = document.getElementById('gkAuthErrorMessage');
+          const alertEl = document.getElementById('authErrorAlert') || document.getElementById('gkAuthErrorAlert');
+          const msgEl = document.getElementById('authErrorMessage') || document.getElementById('gkAuthErrorMessage');
           if (alertEl && msgEl) {
             msgEl.textContent = message;
             alertEl.style.display = 'flex';
@@ -2488,7 +2498,7 @@
         };
 
         const clearAuthError = () => {
-          const alertEl = document.getElementById('gkAuthErrorAlert');
+          const alertEl = document.getElementById('authErrorAlert') || document.getElementById('gkAuthErrorAlert');
           if (alertEl) alertEl.style.display = 'none';
         };
 
@@ -2562,39 +2572,20 @@
 
             if (res && res.user) {
               clearAuthError();
-              this.userManager.currentUser = res.user;
-
-              if (res.requiresVerification) {
-                // Display mandatory verification barrier
-                const mainGkCard = document.getElementById('gkMainAuthCard');
-                const verifCard = document.getElementById('gkVerificationCard');
-                const profileCard = document.getElementById('gkProfileCompletionCard');
-                const verifEmail = document.getElementById('verifEmailDisplay');
-                
-                if (mainGkCard) mainGkCard.style.display = 'none';
-                if (profileCard) profileCard.style.display = 'none';
-                if (verifCard) verifCard.style.display = 'block';
-                if (verifEmail) verifEmail.textContent = res.email || cleanEmail;
-
-                this.showToast(`✉️ Verification link sent to ${cleanEmail}. Please click the link to verify before entering.`, 'info');
-                return;
-              }
-
-              if (res.requiresProfileCompletion) {
-                this.updateUserUI();
-                this.showToast('🩺 Please complete your clinical profile to continue.', 'info');
-                return;
-              }
+              this.userManager.saveUser(res.user);
 
               if (isReg && !localStorage.getItem('cc_trial_expiry')) {
                 this.subManager.startFreeTrial('monthly');
               }
-              if (formType === 'modal') {
-                this.hideAuthModal();
-              }
+              this.hideAuthModal();
               this.updateUserUI();
               this.updateSubscriptionUI();
-              this.showToast(`✅ Welcome, ${res.user.name || name}! Cloud session active.`, 'success');
+              this.showToast(`✅ Welcome, ${res.user.name || name || 'Doctor'}! Cloud session active.`, 'success');
+              if (res.requiresVerification) {
+                setTimeout(() => {
+                  this.showToast(`✉️ Verification link sent to ${cleanEmail}.`, 'info');
+                }, 1200);
+              }
             }
           } catch (err) {
             console.error('Auth error:', err);

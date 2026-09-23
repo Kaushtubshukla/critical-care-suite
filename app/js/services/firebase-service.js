@@ -56,7 +56,10 @@ class FirebaseService {
   async _ensureInitialized() {
     if (this._initPromise) {
       try {
-        await this._initPromise;
+        await Promise.race([
+          this._initPromise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase init timeout')), 5000))
+        ]);
       } catch (e) {
         console.warn('Firebase init wait notice:', e);
       }
@@ -531,7 +534,12 @@ class FirebaseService {
       } catch (authErr) {
         console.error('Firebase createUser error:', authErr);
         if (authErr.code === 'auth/email-already-in-use') {
-          throw new Error('An account with this email address already exists. Please tap "Sign In" above to log in.');
+          try {
+            const signInRes = await this.signInWithEmail(cleanEmail, password);
+            return signInRes;
+          } catch (signInErr) {
+            throw new Error('An account with this email already exists. Please tap "Sign In" above to log in.');
+          }
         } else if (authErr.code === 'auth/weak-password') {
           throw new Error('Password is too weak. Please use at least 8 characters with a mix of letters and numbers.');
         } else if (authErr.code === 'auth/invalid-email') {
