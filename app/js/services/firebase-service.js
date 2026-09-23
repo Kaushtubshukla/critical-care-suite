@@ -5,6 +5,41 @@
  */
 
 import { FIREBASE_CONFIG, USE_REAL_FIREBASE } from './firebase-config.js';
+import { initializeApp } from '../vendor/firebase/firebase-app.js';
+import { 
+  getAuth, 
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  onAuthStateChanged, 
+  GoogleAuthProvider,
+  getRedirectResult,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  updateProfile,
+  sendPasswordResetEmail,
+  sendEmailVerification,
+  deleteUser
+} from '../vendor/firebase/firebase-auth.js';
+import { 
+  getFirestore, 
+  doc, 
+  getDoc, 
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+  enableIndexedDbPersistence
+} from '../vendor/firebase/firebase-firestore.js';
 
 class FirebaseService {
   constructor() {
@@ -56,12 +91,9 @@ class FirebaseService {
   async _ensureInitialized() {
     if (this._initPromise) {
       try {
-        await Promise.race([
-          this._initPromise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase init timeout')), 5000))
-        ]);
+        await this._initPromise;
       } catch (e) {
-        console.warn('Firebase init wait notice:', e);
+        console.warn('Firebase init notice:', e);
       }
     }
   }
@@ -69,25 +101,9 @@ class FirebaseService {
   // --- Real Google Firebase Cloud Initialization ---
   async _initRealFirebase() {
     try {
-      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-      const { 
-        getAuth, 
-        initializeAuth,
-        indexedDBLocalPersistence,
-        browserLocalPersistence,
-        browserPopupRedirectResolver,
-        onAuthStateChanged, 
-        GoogleAuthProvider,
-        getRedirectResult
-      } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
-      const { 
-        getFirestore, 
-        doc, 
-        getDoc, 
-        setDoc,
-        onSnapshot,
-        enableIndexedDbPersistence
-      } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      
+      
+      
 
       this.fbApp = initializeApp(FIREBASE_CONFIG);
       
@@ -195,7 +211,7 @@ class FirebaseService {
 
       // Listen for Live Push Notifications from Cloud Firestore
       try {
-        const { collection, query, orderBy, limit } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        
         const notifQuery = query(collection(this.fbDb, 'notifications'), orderBy('timestamp', 'desc'), limit(5));
         let isInitialNotifSnap = true;
         onSnapshot(notifQuery, (snap) => {
@@ -230,7 +246,7 @@ class FirebaseService {
   async _syncFirebaseUserDoc(fbUser) {
     if (!this.fbDb) return;
     try {
-      const { doc, getDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      
       const userRef = doc(this.fbDb, 'users', fbUser.uid);
       const snap = await getDoc(userRef);
 
@@ -290,47 +306,45 @@ class FirebaseService {
       this._userDocUnsub = null;
     }
     try {
-      import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({ doc, onSnapshot }) => {
-        const userRef = doc(this.fbDb, 'users', uid);
-        this._userDocUnsub = onSnapshot(userRef, (snap) => {
-          if (snap.exists()) {
-            const remoteData = snap.data();
-            const wasVIP = !!this.currentUser?.isVIP;
-            const newVIP = !!remoteData.isVIP;
-            const newTier = newVIP ? 'vip' : (remoteData.tier || this.currentUser?.tier || 'free');
+      const userRef = doc(this.fbDb, 'users', uid);
+      this._userDocUnsub = onSnapshot(userRef, (snap) => {
+        if (snap.exists()) {
+          const remoteData = snap.data();
+          const wasVIP = !!this.currentUser?.isVIP;
+          const newVIP = !!remoteData.isVIP;
+          const newTier = newVIP ? 'vip' : (remoteData.tier || this.currentUser?.tier || 'free');
 
-            let changed = false;
-            if (this.currentUser) {
-              if (wasVIP !== newVIP || this.currentUser.tier !== newTier) {
-                changed = true;
-              }
-              this.currentUser = {
-                ...this.currentUser,
-                ...remoteData,
-                isVIP: newVIP,
-                tier: newTier
-              };
-            } else {
-              this.currentUser = {
-                ...remoteData,
-                isVIP: newVIP,
-                tier: newTier,
-                isLoggedIn: true
-              };
+          let changed = false;
+          if (this.currentUser) {
+            if (wasVIP !== newVIP || this.currentUser.tier !== newTier) {
               changed = true;
             }
-
-            localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
-            localStorage.setItem(this.subKey, newTier);
-
-            if (changed) {
-              console.log('⭐ Live VIP / Tier update received from Cloud Firestore:', { isVIP: newVIP, tier: newTier });
-              this._notifyAuthChange();
-            }
+            this.currentUser = {
+              ...this.currentUser,
+              ...remoteData,
+              isVIP: newVIP,
+              tier: newTier
+            };
+          } else {
+            this.currentUser = {
+              ...remoteData,
+              isVIP: newVIP,
+              tier: newTier,
+              isLoggedIn: true
+            };
+            changed = true;
           }
-        }, (err) => {
-          console.warn('User doc onSnapshot notice:', err.message);
-        });
+
+          localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
+          localStorage.setItem(this.subKey, newTier);
+
+          if (changed) {
+            console.log('⭐ Live VIP / Tier update received from Cloud Firestore:', { isVIP: newVIP, tier: newTier });
+            this._notifyAuthChange();
+          }
+        }
+      }, (err) => {
+        console.warn('User doc onSnapshot notice:', err.message);
       });
     } catch (e) {
       console.warn('_listenToCurrentUserDoc error:', e);
@@ -373,7 +387,7 @@ class FirebaseService {
 
     if (this.isRealFirebaseActive && this.fbDb) {
       try {
-        const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        
         await updateDoc(doc(this.fbDb, 'users', this.currentUser.uid), {
           name: cleanName,
           role: finalRole,
@@ -388,7 +402,7 @@ class FirebaseService {
 
     if (this.isRealFirebaseActive && this.fbAuth && this.fbAuth.currentUser) {
       try {
-        const { updateProfile } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+        
         await updateProfile(this.fbAuth.currentUser, { displayName: cleanName });
       } catch (e) {}
     }
@@ -472,12 +486,8 @@ class FirebaseService {
 
     if (this.isRealFirebaseActive && this.fbAuth) {
       try {
-        const { 
-          createUserWithEmailAndPassword, 
-          updateProfile,
-          sendEmailVerification
-        } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
-        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        
+        
 
         const cred = await createUserWithEmailAndPassword(this.fbAuth, cleanEmail, password);
         const fbUser = cred.user;
@@ -570,8 +580,8 @@ class FirebaseService {
 
     if (this.isRealFirebaseActive && this.fbAuth) {
       try {
-        const { signInWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
-        const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        
+        
 
         const cred = await signInWithEmailAndPassword(this.fbAuth, cleanEmail, password);
         const fbUser = cred.user;
@@ -663,7 +673,7 @@ class FirebaseService {
           localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
           if (this.fbDb) {
             try {
-              const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+              
               await updateDoc(doc(this.fbDb, 'users', this.fbAuth.currentUser.uid), {
                 emailVerified: true,
                 verifiedAt: new Date().toISOString()
@@ -695,11 +705,7 @@ class FirebaseService {
 
     if (this.isRealFirebaseActive && this.fbAuth) {
       try {
-        const { 
-          signInWithPopup, 
-          signInWithRedirect,
-          browserPopupRedirectResolver
-        } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+        
 
         let cred;
         try {
@@ -741,7 +747,7 @@ class FirebaseService {
     }
 
     if (this.isRealFirebaseActive && this.fbAuth) {
-      const { sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+      
       await sendPasswordResetEmail(this.fbAuth, cleanEmail);
       return { success: true, message: `Password reset email sent to ${cleanEmail}.` };
     }
@@ -750,7 +756,7 @@ class FirebaseService {
 
   async sendVerificationEmail() {
     if (this.isRealFirebaseActive && this.fbAuth && this.fbAuth.currentUser) {
-      const { sendEmailVerification } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+      
       await sendEmailVerification(this.fbAuth.currentUser);
       return { success: true, message: 'Verification link sent to your registered email.' };
     }
@@ -761,7 +767,7 @@ class FirebaseService {
   async signOut() {
     if (this.isRealFirebaseActive && this.fbAuth) {
       try {
-        const { signOut } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+        
         await signOut(this.fbAuth);
       } catch (e) {
         console.warn('Firebase signOut error:', e.message);
@@ -783,12 +789,12 @@ class FirebaseService {
         // Delete Firestore document
         if (this.fbDb) {
           try {
-            const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+            
             await deleteDoc(doc(this.fbDb, 'users', uid));
           } catch (e) {}
         }
         // Delete Firebase Auth user
-        const { deleteUser } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+        
         await deleteUser(this.fbAuth.currentUser);
       } catch (err) {
         console.warn('Firebase delete user error:', err.message);
@@ -835,7 +841,7 @@ class FirebaseService {
     await this._waitForFirebase();
     if (this.isRealFirebaseActive && this.fbDb) {
       try {
-        const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        
         const snap = await getDocs(collection(this.fbDb, 'users'));
         const usersList = [];
         snap.forEach(d => {
@@ -875,7 +881,7 @@ class FirebaseService {
     this._waitForFirebase().then(async () => {
       if (this.isRealFirebaseActive && this.fbDb) {
         try {
-          const { collection, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+          
           onSnapshot(collection(this.fbDb, 'users'), (snap) => {
             const usersList = [];
             snap.forEach(d => {
@@ -918,7 +924,7 @@ class FirebaseService {
 
     if (this.isRealFirebaseActive && this.fbDb) {
       try {
-        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        
         await setDoc(doc(this.fbDb, 'notifications', notif.id), notif);
         console.log('✅ Push notification dispatched to Cloud Firestore:', notif.id);
       } catch (e) {
@@ -947,7 +953,7 @@ class FirebaseService {
     this._waitForFirebase().then(async () => {
       if (this.isRealFirebaseActive && this.fbDb) {
         try {
-          const { collection, query, orderBy, limit, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+          
           const q = query(collection(this.fbDb, 'notifications'), orderBy('timestamp', 'desc'), limit(15));
           onSnapshot(q, (snap) => {
             const list = [];
@@ -986,7 +992,7 @@ class FirebaseService {
   async setUserVIP(uid, isVIP) {
     if (this.isRealFirebaseActive && this.fbDb) {
       try {
-        const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        
         await updateDoc(doc(this.fbDb, 'users', uid), {
           isVIP: isVIP,
           tier: isVIP ? 'vip' : 'free',
@@ -1013,7 +1019,7 @@ class FirebaseService {
     localStorage.setItem(this.settingsKey, JSON.stringify(settings));
     if (this.isRealFirebaseActive && this.fbDb) {
       try {
-        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        
         await setDoc(doc(this.fbDb, 'settings', 'pricing'), {
           ...settings,
           updatedAt: new Date().toISOString()
@@ -1035,7 +1041,7 @@ class FirebaseService {
     localStorage.setItem('critical_care_module_coverage', JSON.stringify(coverageMap));
     if (this.isRealFirebaseActive && this.fbDb) {
       try {
-        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        
         await setDoc(doc(this.fbDb, 'settings', 'coverage'), {
           coverage: coverageMap,
           updatedAt: new Date().toISOString()
@@ -1058,7 +1064,7 @@ class FirebaseService {
     localStorage.setItem('cch_live_published_modules', JSON.stringify(publishedList));
     if (this.isRealFirebaseActive && this.fbDb) {
       try {
-        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        
         await setDoc(doc(this.fbDb, 'settings', 'catalog'), {
           archived: archivedList,
           published: publishedList,
