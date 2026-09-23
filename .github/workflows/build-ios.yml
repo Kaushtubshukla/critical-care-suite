@@ -27,10 +27,9 @@ jobs:
         run: node bundle-assets.js
 
       - name: Sync iOS Capacitor Platform
-        run: npx cap sync ios
-
-      - name: Select Xcode Version
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+        run: |
+          npx cap sync ios
+          cd ios/App && pod install
 
       - name: Build iOS Simulator App (For Appetize.io & Simulators)
         run: |
