@@ -197,6 +197,8 @@ class ModulesService {
     return newModule;
   }
 
+
+
   /**
    * Toggle Module Tier (Free vs Pro)
    */

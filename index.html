@@ -1719,7 +1719,7 @@
             sim.title.toLowerCase().includes(q) ||
             sim.subtitle.toLowerCase().includes(q) ||
             sim.description.toLowerCase().includes(q) ||
-            sim.tags.some(t => t.toLowerCase().includes(q))
+            (sim.tags || []).some(t => t.toLowerCase().includes(q))
           );
         });
       }
@@ -1807,7 +1807,7 @@
               <p class="sim-desc">${sim.description}</p>
 
               <div class="sim-tags">
-                ${sim.tags.map(tag => `<span class="sim-tag">${tag}</span>`).join('')}
+                ${(sim.tags || []).map(tag => `<span class="sim-tag">${tag}</span>`).join('')}
               </div>
 
               <div class="sim-meta-row">

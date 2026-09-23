@@ -531,9 +531,9 @@ class AdminDashboardController {
           const published = await modulesService.publishFromGitHub(this.currentPublishId, config);
           document.getElementById('publishConfigModal').classList.remove('active');
           this.showToast(`🎉 Published '${published.title}' live to mobile app!`);
-          this.renderReviewQueue();
-          this.renderModulesLibrary();
-          this.renderModulesPricingTable();
+          this.renderGitHubQueue();
+          this.renderPublishedModules();
+          this.renderModuleCoverageMatrix();
         } catch (err) {
           this.showToast('Publishing failed: ' + err.message, 'error');
         } finally {
@@ -542,6 +542,8 @@ class AdminDashboardController {
         }
       });
     }
+
+
 
     // Send Broadcast Notification
     const sendNotifBtn = document.getElementById('sendBroadcastBtn');

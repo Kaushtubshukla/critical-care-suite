@@ -20,11 +20,11 @@
         ]
       },
       {
-        "source": "**/*.@(js|css|png|jpg|svg|webp)",
+        "source": "**/*.@(js|css)",
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "max-age=3600"
+            "value": "no-cache, no-store, must-revalidate"
           }
         ]
       }
