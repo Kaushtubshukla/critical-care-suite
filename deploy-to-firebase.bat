@@ -14,22 +14,18 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 echo.
-echo [2/3] Authenticating with Google Firebase...
-echo A browser window is opening. Please select your Google account and click Allow.
-echo.
-call npx firebase-tools login
+echo [2/3] Deploying Admin Portal to Google Firebase Hosting...
+call node node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting,firestore:rules --project critical-care-hub
 if %errorlevel% neq 0 (
-    echo [ERROR] Firebase login was not completed.
-    pause
-    exit /b 1
-)
-echo.
-echo [3/3] Deploying Admin Panel & Firestore Rules to Firebase...
-call npx firebase-tools deploy --only hosting,firestore:rules
-if %errorlevel% neq 0 (
-    echo [ERROR] Deployment failed.
-    pause
-    exit /b 1
+    echo.
+    echo [NOTICE] If authentication is needed, opening Google login...
+    call node node_modules\firebase-tools\lib\bin\firebase.js login
+    call node node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting,firestore:rules --project critical-care-hub
+    if %errorlevel% neq 0 (
+        echo [ERROR] Deployment failed.
+        pause
+        exit /b 1
+    )
 )
 echo.
 echo ======================================================================
