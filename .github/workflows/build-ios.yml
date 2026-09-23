@@ -43,8 +43,8 @@ jobs:
           
           # Compress the built .app for instant Appetize.io upload
           cd build/Build/Products/Release-iphonesimulator
-          tar -czf ../../../../CriticalCareHub-iOS-Simulator.tar.gz App.app
-          zip -r ../../../../CriticalCareHub-iOS-Simulator.zip App.app
+          tar -czf "$GITHUB_WORKSPACE/CriticalCareHub-iOS-Simulator.tar.gz" App.app
+          zip -r "$GITHUB_WORKSPACE/CriticalCareHub-iOS-Simulator.zip" App.app
 
       - name: Upload iOS Simulator Build (For Appetize.io)
         uses: actions/upload-artifact@v4
