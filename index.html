@@ -2485,23 +2485,29 @@
           });
         }
 
-        // Reusable Error Display Helpers for Form Feedback
+        // Reusable Error Display Helpers for Form Feedback (Dual Target for Gatekeeper & Modal)
         const showAuthError = (message) => {
-          const alertEl = document.getElementById('authErrorAlert') || document.getElementById('gkAuthErrorAlert');
-          const msgEl = document.getElementById('authErrorMessage') || document.getElementById('gkAuthErrorMessage');
-          if (alertEl && msgEl) {
-            msgEl.textContent = message;
-            alertEl.style.display = 'flex';
-            alertEl.classList.remove('shake');
-            void alertEl.offsetWidth;
-            alertEl.classList.add('shake');
-          }
+          ['gkAuthErrorAlert', 'authErrorAlert'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+              el.style.display = 'flex';
+              el.classList.remove('shake');
+              void el.offsetWidth;
+              el.classList.add('shake');
+            }
+          });
+          ['gkAuthErrorMessage', 'authErrorMessage'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = message;
+          });
           this.showToast(message, 'error');
         };
 
         const clearAuthError = () => {
-          const alertEl = document.getElementById('authErrorAlert') || document.getElementById('gkAuthErrorAlert');
-          if (alertEl) alertEl.style.display = 'none';
+          ['gkAuthErrorAlert', 'authErrorAlert'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+          });
         };
 
         const showProfileError = (message) => {

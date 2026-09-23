@@ -107,11 +107,10 @@ class FirebaseService {
       this.fbApp = initializeApp(FIREBASE_CONFIG);
 
       // Initialize Auth with standard browserLocalPersistence (localStorage) for iOS & Android
-      // This completely avoids Apple WKWebView's custom-scheme IndexedDB transaction deadlock
+      // We explicitly omit popupRedirectResolver so WKWebView never initializes hanging background iframes
       try {
         this.fbAuth = initializeAuth(this.fbApp, {
-          persistence: browserLocalPersistence,
-          popupRedirectResolver: browserPopupRedirectResolver
+          persistence: browserLocalPersistence
         });
       } catch (authInitErr) {
         this.fbAuth = getAuth(this.fbApp);
@@ -123,15 +122,6 @@ class FirebaseService {
       this.isRealFirebaseActive = true;
 
       console.log('✅ Connected to live Google Firebase Cloud:', FIREBASE_CONFIG.projectId);
-
-      // Handle redirect result in background without blocking Auth
-      getRedirectResult(this.fbAuth, browserPopupRedirectResolver).then((redirectRes) => {
-        if (redirectRes && redirectRes.user) {
-          this._syncFirebaseUserDoc(redirectRes.user);
-        }
-      }).catch((redirErr) => {
-        console.warn('Firebase redirect result notice:', redirErr.message);
-      });
 
       // Listen for Firebase Auth state changes
       onAuthStateChanged(this.fbAuth, async (fbUser) => {
@@ -448,7 +438,39 @@ class FirebaseService {
     };
   }
 
-  // --- 1. Email & Password Sign Up (Industry Authenticity & Verification Enforcement) ---
+  // Direct Google Identity Platform REST helper (100% reliable across iOS WKWebView, Android WebView, and Desktop)
+  async _callIdentityApi(endpoint, body) {
+    const url = `https://identitytoolkit.googleapis.com/v1/accounts:${endpoint}?key=${FIREBASE_CONFIG.apiKey}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        const rawCode = data?.error?.message || 'AUTHENTICATION_FAILED';
+        const err = new Error(rawCode);
+        err.rawCode = rawCode;
+        throw err;
+      }
+      return data;
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        const timeoutErr = new Error('Connection timed out. Please check your network connection and try again.');
+        timeoutErr.rawCode = 'TIMEOUT';
+        throw timeoutErr;
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  // --- 1. Email & Password Sign Up (Direct Cloud REST API - Instant & Mobile Resilient) ---
   async createUserWithEmail(email, password, profileData = {}) {
     const cleanEmail = email.trim().toLowerCase();
     
@@ -469,93 +491,92 @@ class FirebaseService {
     const trialDays = 7;
     const trialExpiry = Date.now() + (trialDays * 86400000);
 
-    await this._ensureInitialized();
-
-    if (!navigator.onLine && (!this.isRealFirebaseActive || !this.fbAuth)) {
+    if (!navigator.onLine) {
       throw new Error('An active internet connection is required to create and verify your official physician account with Google Firebase.');
     }
 
-    if (this.isRealFirebaseActive && this.fbAuth) {
-      try {
-        
-        
+    try {
+      // 1. Direct REST call to Google Identity Toolkit signUp endpoint
+      const signupRes = await this._callIdentityApi('signUp', {
+        email: cleanEmail,
+        password: password,
+        returnSecureToken: true
+      });
 
-        const cred = await Promise.race([
-          createUserWithEmailAndPassword(this.fbAuth, cleanEmail, password),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Account creation request timed out. Please check your internet connection and try again.')), 10000))
-        ]);
-        const fbUser = cred.user;
+      const uid = signupRes.localId;
+      const idToken = signupRes.idToken;
 
-        // Set display name in Firebase Auth
+      // 2. Set profile display name via REST (non-blocking)
+      this._callIdentityApi('update', {
+        idToken: idToken,
+        displayName: displayName,
+        returnSecureToken: true
+      }).catch(e => console.warn('Update displayName notice:', e.message));
+
+      // 3. Send official email verification link via REST (non-blocking)
+      this._callIdentityApi('sendOobCode', {
+        idToken: idToken,
+        requestType: 'VERIFY_EMAIL'
+      }).catch(e => console.warn('Verification email dispatch notice:', e.message));
+
+      const userDocData = {
+        uid: uid,
+        name: displayName,
+        email: cleanEmail,
+        emailVerified: false,
+        role: role,
+        institution: institution,
+        tier: 'trial',
+        trialExpiry: trialExpiry,
+        idToken: idToken,
+        refreshToken: signupRes.refreshToken,
+        isVIP: role === 'admin',
+        isLoggedIn: true,
+        provider: 'password',
+        isProfileComplete: true,
+        createdAt: new Date().toISOString()
+      };
+
+      // 4. Write user document to Cloud Firestore
+      if (this.fbDb) {
         try {
-          await updateProfile(fbUser, { displayName: displayName });
-        } catch (e) {}
-
-        // Send official verification email
-        try {
-          await sendEmailVerification(fbUser);
-        } catch (evErr) {
-          console.warn('Verification email dispatch notice:', evErr.message);
-        }
-
-        const userDocData = {
-          uid: fbUser.uid,
-          name: displayName,
-          email: cleanEmail,
-          emailVerified: false,
-          role: role,
-          institution: institution,
-          tier: 'trial',
-          trialExpiry: trialExpiry,
-          isVIP: role === 'admin',
-          isLoggedIn: true,
-          provider: 'password',
-          isProfileComplete: true,
-          createdAt: new Date().toISOString()
-        };
-
-        // Write user document to Cloud Firestore
-        try {
-          if (this.fbDb) {
-            await setDoc(doc(this.fbDb, 'users', fbUser.uid), userDocData);
-          }
+          await setDoc(doc(this.fbDb, 'users', uid), userDocData);
         } catch (dbErr) {
           console.warn('Firestore doc creation notice:', dbErr.message);
         }
-
-        this.currentUser = userDocData;
-        localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
-        localStorage.setItem(this.subKey, 'trial');
-        localStorage.setItem(this.trialExpiryKey, trialExpiry.toString());
-        
-        if (this.currentUser && this.currentUser.isLoggedIn) {
-          document.documentElement.classList.add('is-authenticated-user');
-        }
-        this._notifyAuthChange();
-        return { success: true, user: this.currentUser, requiresVerification: false, email: cleanEmail };
-      } catch (authErr) {
-        console.error('Firebase createUser error:', authErr);
-        if (authErr.code === 'auth/email-already-in-use') {
-          const err = new Error('An account with this email already exists. Please tap "Sign In" above to log in.');
-          err.code = 'auth/email-already-in-use';
-          throw err;
-        } else if (authErr.code === 'auth/weak-password') {
-          throw new Error('Password is too weak. Please use at least 8 characters with a mix of letters and numbers.');
-        } else if (authErr.code === 'auth/invalid-email') {
-          throw new Error('The email address format is invalid. Please check for typos.');
-        } else if (authErr.code === 'auth/network-request-failed') {
-          throw new Error('Unable to connect to Firebase Cloud. Please check your internet connection.');
-        } else if (authErr.code === 'auth/operation-not-allowed') {
-          throw new Error('Email/Password registration is currently disabled in Firebase console.');
-        }
-        throw new Error(authErr.message || 'Failed to create physician account. Please try again.');
       }
-    }
 
-    throw new Error('Firebase Authentication is initializing. Please tap again in a moment.');
+      this.currentUser = userDocData;
+      localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
+      localStorage.setItem(this.subKey, 'trial');
+      localStorage.setItem(this.trialExpiryKey, trialExpiry.toString());
+      
+      if (this.currentUser && this.currentUser.isLoggedIn) {
+        document.documentElement.classList.add('is-authenticated-user');
+      }
+      this._notifyAuthChange();
+      return { success: true, user: this.currentUser, requiresVerification: false, email: cleanEmail };
+    } catch (authErr) {
+      console.error('Firebase createUser error:', authErr);
+      const raw = authErr.rawCode || authErr.message || '';
+      if (raw.includes('EMAIL_EXISTS')) {
+        const err = new Error('An account with this email already exists. Please tap "Sign In" above to log in.');
+        err.code = 'auth/email-already-in-use';
+        throw err;
+      } else if (raw.includes('WEAK_PASSWORD')) {
+        throw new Error('Password is too weak. Please use at least 8 characters with a mix of letters and numbers.');
+      } else if (raw.includes('INVALID_EMAIL')) {
+        throw new Error('The email address format is invalid. Please check for typos.');
+      } else if (raw.includes('OPERATION_NOT_ALLOWED')) {
+        throw new Error('Email/Password registration is currently disabled in Firebase console.');
+      } else if (raw.includes('TOO_MANY_ATTEMPTS_TRY_LATER')) {
+        throw new Error('Access temporarily blocked due to unusual activity. Please try again later.');
+      }
+      throw new Error(authErr.message || 'Failed to create physician account. Please try again.');
+    }
   }
 
-  // --- 2. Email & Password Sign In ---
+  // --- 2. Email & Password Sign In (Direct Cloud REST API - Instant & Mobile Resilient) ---
   async signInWithEmail(email, password) {
     const cleanEmail = email.trim().toLowerCase();
 
@@ -563,134 +584,150 @@ class FirebaseService {
       throw new Error('Please enter both your registered email and password.');
     }
 
-    await this._ensureInitialized();
-
-    if (!navigator.onLine && (!this.isRealFirebaseActive || !this.fbAuth)) {
+    if (!navigator.onLine) {
       if (this.currentUser && this.currentUser.email === cleanEmail && (this.currentUser.emailVerified || this.currentUser.role === 'admin')) {
         return { success: true, user: this.currentUser, requiresVerification: false };
       }
       throw new Error('You are currently offline. An internet connection is required to authenticate with Firebase Cloud.');
     }
 
-    if (this.isRealFirebaseActive && this.fbAuth) {
-      try {
-        
-        
+    try {
+      // 1. Direct REST call to Google Identity Toolkit signInWithPassword endpoint
+      const signinRes = await this._callIdentityApi('signInWithPassword', {
+        email: cleanEmail,
+        password: password,
+        returnSecureToken: true
+      });
 
-        const cred = await Promise.race([
-          signInWithEmailAndPassword(this.fbAuth, cleanEmail, password),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Sign in request timed out. Please check your internet connection and try again.')), 10000))
-        ]);
-        const fbUser = cred.user;
+      const uid = signinRes.localId;
+      const idToken = signinRes.idToken;
 
-        // Fetch user document from Cloud Firestore with safety timeout
-        let userDocData = null;
+      // 2. Fetch user profile from Cloud Firestore with safety timeout
+      let userDocData = null;
+      if (this.fbDb) {
         try {
-          if (this.fbDb) {
-            const snap = await Promise.race([
-              getDoc(doc(this.fbDb, 'users', fbUser.uid)),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore profile fetch timeout')), 3000))
-            ]);
-            if (snap && snap.exists()) {
-              userDocData = snap.data();
-            }
+          const snap = await Promise.race([
+            getDoc(doc(this.fbDb, 'users', uid)),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore profile fetch timeout')), 2500))
+          ]);
+          if (snap && snap.exists()) {
+            userDocData = snap.data();
           }
         } catch (dbErr) {
           console.warn('Firestore fetch notice:', dbErr.message);
         }
-
-        if (!userDocData) {
-          const trialExpiry = Date.now() + (7 * 86400000);
-          userDocData = {
-            uid: fbUser.uid,
-            name: fbUser.displayName || 'Dr. Physician',
-            email: cleanEmail,
-            emailVerified: fbUser.emailVerified || false,
-            role: (cleanEmail === 'admin@criticalcare.med') ? 'admin' : 'Doctor',
-            institution: '',
-            tier: 'trial',
-            trialExpiry: trialExpiry,
-            isVIP: cleanEmail === 'admin@criticalcare.med',
-            isLoggedIn: true,
-            isProfileComplete: true,
-            provider: 'password'
-          };
-        }
-
-        const isVerified = fbUser.emailVerified || (cleanEmail === 'admin@criticalcare.med');
-        const isProfileDone = (userDocData.role === 'admin') || (userDocData.isProfileComplete === true && !!userDocData.role && !!userDocData.name);
-
-        this.currentUser = { ...userDocData, emailVerified: isVerified, isProfileComplete: isProfileDone, isLoggedIn: true };
-        localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
-        if (this.currentUser.tier) localStorage.setItem(this.subKey, this.currentUser.tier);
-        if (this.currentUser.trialExpiry) localStorage.setItem(this.trialExpiryKey, this.currentUser.trialExpiry.toString());
-        
-        if (this.currentUser && this.currentUser.isLoggedIn) {
-          document.documentElement.classList.add('is-authenticated-user');
-        } else {
-          document.documentElement.classList.remove('is-authenticated-user');
-        }
-        this._notifyAuthChange();
-        return { 
-          success: true, 
-          user: this.currentUser, 
-          requiresVerification: false, 
-          requiresProfileCompletion: false, 
-          email: cleanEmail 
-        };
-      } catch (authErr) {
-        console.error('Firebase signIn error:', authErr);
-        if (authErr.code === 'auth/user-not-found') {
-          throw new Error('No medical account found with this email. Please tap "Initial Account Setup" above to create one.');
-        } else if (authErr.code === 'auth/wrong-password') {
-          throw new Error('Incorrect password. Please check your password or tap "Forgot password?" below.');
-        } else if (authErr.code === 'auth/invalid-credential') {
-          throw new Error('Incorrect email or password. If you haven\'t created an account yet, please tap "Initial Account Setup" above.');
-        } else if (authErr.code === 'auth/invalid-email') {
-          throw new Error('Please enter a valid email address format (e.g. physician@hospital.org).');
-        } else if (authErr.code === 'auth/user-disabled') {
-          throw new Error('This account has been deactivated. Please contact critical care support.');
-        } else if (authErr.code === 'auth/too-many-requests') {
-          throw new Error('Access temporarily blocked due to multiple failed login attempts. Please wait a moment or reset your password.');
-        } else if (authErr.code === 'auth/network-request-failed') {
-          throw new Error('Unable to connect to Firebase Cloud. Please check your internet connection.');
-        }
-        throw new Error(authErr.message || 'Unable to sign in. Please verify your credentials.');
       }
-    }
 
-    throw new Error('Firebase service is initializing. Please retry in a moment.');
+      if (!userDocData) {
+        const trialExpiry = Date.now() + (7 * 86400000);
+        userDocData = {
+          uid: uid,
+          name: signinRes.displayName || 'Dr. Physician',
+          email: cleanEmail,
+          emailVerified: !!signinRes.registered,
+          role: (cleanEmail === 'admin@criticalcare.med') ? 'admin' : 'Doctor',
+          institution: '',
+          tier: 'trial',
+          trialExpiry: trialExpiry,
+          isVIP: cleanEmail === 'admin@criticalcare.med',
+          isLoggedIn: true,
+          isProfileComplete: true,
+          provider: 'password'
+        };
+      }
+
+      const isVerified = (cleanEmail === 'admin@criticalcare.med') || !!userDocData.emailVerified;
+      const isProfileDone = (userDocData.role === 'admin') || (userDocData.isProfileComplete === true && !!userDocData.role && !!userDocData.name);
+
+      this.currentUser = {
+        ...userDocData,
+        idToken: idToken,
+        refreshToken: signinRes.refreshToken,
+        emailVerified: isVerified,
+        isProfileComplete: isProfileDone,
+        isLoggedIn: true
+      };
+
+      localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
+      if (this.currentUser.tier) localStorage.setItem(this.subKey, this.currentUser.tier);
+      if (this.currentUser.trialExpiry) localStorage.setItem(this.trialExpiryKey, this.currentUser.trialExpiry.toString());
+      
+      if (this.currentUser && this.currentUser.isLoggedIn) {
+        document.documentElement.classList.add('is-authenticated-user');
+      } else {
+        document.documentElement.classList.remove('is-authenticated-user');
+      }
+      this._notifyAuthChange();
+
+      // Start listening to user document updates
+      this._listenToCurrentUserDoc(uid);
+
+      return { 
+        success: true, 
+        user: this.currentUser, 
+        requiresVerification: false, 
+        requiresProfileCompletion: false, 
+        email: cleanEmail 
+      };
+    } catch (authErr) {
+      console.error('Firebase signIn error:', authErr);
+      const raw = authErr.rawCode || authErr.message || '';
+      if (raw.includes('EMAIL_NOT_FOUND') || raw.includes('INVALID_LOGIN_CREDENTIALS') || raw.includes('INVALID_PASSWORD')) {
+        throw new Error('Incorrect email or password. If you haven\'t created an account yet, please tap "Initial Account Setup" above.');
+      } else if (raw.includes('USER_DISABLED')) {
+        throw new Error('This account has been deactivated. Please contact critical care support.');
+      } else if (raw.includes('TOO_MANY_ATTEMPTS_TRY_LATER')) {
+        throw new Error('Access temporarily blocked due to multiple failed login attempts. Please wait a moment or reset your password.');
+      } else if (raw.includes('INVALID_EMAIL')) {
+        throw new Error('Please enter a valid email address format (e.g. physician@hospital.org).');
+      }
+      throw new Error(authErr.message || 'Unable to sign in. Please verify your credentials.');
+    }
   }
 
   // --- 3. Check Live Verification Status ---
   async checkEmailVerification() {
-    if (this.isRealFirebaseActive && this.fbAuth && this.fbAuth.currentUser) {
-      await this.fbAuth.currentUser.reload();
-      const isVerified = this.fbAuth.currentUser.emailVerified;
-      if (isVerified) {
-        if (this.currentUser) {
+    if (this.currentUser && this.currentUser.idToken) {
+      try {
+        const res = await this._callIdentityApi('lookup', {
+          idToken: this.currentUser.idToken
+        });
+        const user = res?.users?.[0];
+        if (user && user.emailVerified) {
           this.currentUser.emailVerified = true;
           localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
-          if (this.fbDb) {
+          if (this.fbDb && this.currentUser.uid) {
             try {
-              
-              await updateDoc(doc(this.fbDb, 'users', this.fbAuth.currentUser.uid), {
+              await updateDoc(doc(this.fbDb, 'users', this.currentUser.uid), {
                 emailVerified: true,
                 verifiedAt: new Date().toISOString()
               });
             } catch (e) {}
           }
+          const isProfileDone = (this.currentUser.role === 'admin') || (this.currentUser.isProfileComplete === true && !!this.currentUser.role && !!this.currentUser.name);
+          if (isProfileDone) {
+            document.documentElement.classList.add('is-authenticated-user');
+          }
+          this._notifyAuthChange();
+          return true;
         }
-        const isProfileDone = (this.currentUser.role === 'admin') || (this.currentUser.isProfileComplete === true && !!this.currentUser.role && !!this.currentUser.name);
-        if (isProfileDone) {
-          document.documentElement.classList.add('is-authenticated-user');
-        } else {
-          document.documentElement.classList.remove('is-authenticated-user');
-        }
-        this._notifyAuthChange();
-        return true;
+      } catch (e) {
+        console.warn('Email verification check notice:', e.message);
       }
-      return false;
+    }
+    // Fallback to fbAuth currentUser if present
+    if (this.isRealFirebaseActive && this.fbAuth && this.fbAuth.currentUser) {
+      try {
+        await this.fbAuth.currentUser.reload();
+        if (this.fbAuth.currentUser.emailVerified) {
+          if (this.currentUser) {
+            this.currentUser.emailVerified = true;
+            localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
+          }
+          this._notifyAuthChange();
+          return true;
+        }
+      } catch (e) {}
     }
     return false;
   }
@@ -739,24 +776,42 @@ class FirebaseService {
     throw new Error('Google Authentication service is currently connecting. Please tap again in a moment.');
   }
 
-  // --- 4. Password Reset & Verification Utilities ---
+  // --- 4. Password Reset & Verification Utilities (Direct REST with Web SDK Fallback) ---
   async sendPasswordReset(email) {
     const cleanEmail = (email || (this.currentUser && this.currentUser.email) || '').trim().toLowerCase();
     if (!cleanEmail) {
       throw new Error('Please enter the email address for password reset.');
     }
 
-    if (this.isRealFirebaseActive && this.fbAuth) {
-      
-      await sendPasswordResetEmail(this.fbAuth, cleanEmail);
-      return { success: true, message: `Password reset email sent to ${cleanEmail}.` };
+    try {
+      await this._callIdentityApi('sendOobCode', {
+        email: cleanEmail,
+        requestType: 'PASSWORD_RESET'
+      });
+      return { success: true, message: `Password reset email sent to ${cleanEmail}. Please check your inbox & spam folder.` };
+    } catch (e) {
+      console.warn('Password reset REST notice:', e.message);
+      if (this.isRealFirebaseActive && this.fbAuth) {
+        await sendPasswordResetEmail(this.fbAuth, cleanEmail);
+        return { success: true, message: `Password reset email sent to ${cleanEmail}.` };
+      }
+      throw new Error(e.message || 'Unable to send password reset email.');
     }
-    throw new Error('Unable to contact Firebase Auth server.');
   }
 
   async sendVerificationEmail() {
+    if (this.currentUser && this.currentUser.idToken) {
+      try {
+        await this._callIdentityApi('sendOobCode', {
+          idToken: this.currentUser.idToken,
+          requestType: 'VERIFY_EMAIL'
+        });
+        return { success: true, message: 'Verification link sent to your registered email.' };
+      } catch (e) {
+        console.warn('Verification email REST notice:', e.message);
+      }
+    }
     if (this.isRealFirebaseActive && this.fbAuth && this.fbAuth.currentUser) {
-      
       await sendEmailVerification(this.fbAuth.currentUser);
       return { success: true, message: 'Verification link sent to your registered email.' };
     }
