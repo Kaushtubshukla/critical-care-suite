@@ -16,9 +16,7 @@
         var savedProfile = localStorage.getItem('critical_care_user_profile');
         if (savedProfile) {
           var u = JSON.parse(savedProfile);
-          var isVerif = u && u.isLoggedIn && (u.emailVerified || u.role === 'admin' || (u.email && u.email.toLowerCase() === 'admin@criticalcare.med'));
-          var isProfDone = u && ((u.role === 'admin') || (u.isProfileComplete === true && !!u.role && !!u.name));
-          if (isVerif && isProfDone) {
+          if (u && u.isLoggedIn) {
             document.documentElement.classList.add('is-authenticated-user');
           } else {
             document.documentElement.classList.remove('is-authenticated-user');
@@ -1099,9 +1097,7 @@
         try {
           localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(this.currentUser));
         } catch (e) {}
-        const isVerif = this.currentUser.emailVerified || this.currentUser.role === 'admin' || (this.currentUser.email && this.currentUser.email.toLowerCase() === 'admin@criticalcare.med');
-        const isProfDone = (this.currentUser.role === 'admin') || (this.currentUser.isProfileComplete === true && !!this.currentUser.role && !!this.currentUser.name);
-        if (isVerif && isProfDone) {
+        if (this.currentUser && this.currentUser.isLoggedIn) {
           document.documentElement.classList.add('is-authenticated-user');
         } else {
           document.documentElement.classList.remove('is-authenticated-user');
@@ -1121,10 +1117,15 @@
           isLoggedIn: false
         };
         try {
-          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(this.currentUser));
+          localStorage.removeItem(USER_STORAGE_KEY);
         } catch (e) {}
         document.documentElement.classList.remove('is-authenticated-user');
 
+        const gatekeeper = document.getElementById('authGatekeeperOverlay');
+        if (gatekeeper) {
+          gatekeeper.classList.remove('authenticated-hidden');
+          gatekeeper.style.display = 'flex';
+        }
         const mainGkCard = document.getElementById('gkMainAuthCard');
         const verifCard = document.getElementById('gkVerificationCard');
         const profileCard = document.getElementById('gkProfileCompletionCard');
@@ -1966,13 +1967,14 @@
         const profileRoleBadge = document.getElementById('profileRoleBadge');
         const roleAdminLink = document.getElementById('roleAdminPortalLink');
 
-        const isVerified = user && (user.emailVerified || user.role === 'admin' || (user.email && user.email.toLowerCase() === 'admin@criticalcare.med'));
-        const isProfileDone = user && ((user.role === 'admin') || (user.isProfileComplete === true && !!user.role && !!user.name));
-        const canEnterApp = user && user.isLoggedIn && isVerified && isProfileDone;
+        const canEnterApp = user && user.isLoggedIn;
 
         if (canEnterApp) {
           document.documentElement.classList.add('is-authenticated-user');
-          if (gatekeeper) gatekeeper.classList.add('authenticated-hidden');
+          if (gatekeeper) {
+            gatekeeper.classList.add('authenticated-hidden');
+            gatekeeper.style.display = 'none';
+          }
           if (mainGkCard) mainGkCard.style.display = 'block';
           if (verifCard) verifCard.style.display = 'none';
           if (profileCard) profileCard.style.display = 'none';
@@ -2001,7 +2003,14 @@
           }
         } else {
           document.documentElement.classList.remove('is-authenticated-user');
-          if (gatekeeper) gatekeeper.classList.remove('authenticated-hidden');
+          if (gatekeeper) {
+            gatekeeper.classList.remove('authenticated-hidden');
+            gatekeeper.style.display = 'flex';
+          }
+          if (mainGkCard) mainGkCard.style.display = 'block';
+          if (verifCard) verifCard.style.display = 'none';
+          if (profileCard) profileCard.style.display = 'none';
+
           if (loggedOutView) loggedOutView.style.display = 'block';
           if (loggedInView) loggedInView.style.display = 'none';
           if (roleAdminLink) roleAdminLink.style.display = 'none';
@@ -2018,44 +2027,6 @@
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               <span>Sign In</span>
             `;
-          }
-
-          // Route to the appropriate gatekeeper card
-          if (user && user.isLoggedIn && !isVerified) {
-            // Unverified email: show verification card
-            if (mainGkCard) mainGkCard.style.display = 'none';
-            if (profileCard) profileCard.style.display = 'none';
-            if (verifCard) {
-              verifCard.style.display = 'block';
-              const verifEmail = document.getElementById('verifEmailDisplay');
-              if (verifEmail) verifEmail.textContent = user.email || '';
-            }
-          } else if (user && user.isLoggedIn && isVerified && !isProfileDone) {
-            // Verified but incomplete clinical profile (e.g. fresh Google Sign-In): show profile completion card
-            if (mainGkCard) mainGkCard.style.display = 'none';
-            if (verifCard) verifCard.style.display = 'none';
-            if (profileCard) {
-              profileCard.style.display = 'block';
-              const profileGoogleEmail = document.getElementById('gkCompleteGoogleEmail');
-              if (profileGoogleEmail) profileGoogleEmail.textContent = user.email || '';
-              const profileNameInput = document.getElementById('gkCompleteFullNameInput');
-              if (profileNameInput && !profileNameInput.value) {
-                profileNameInput.value = user.name || '';
-              }
-              const profileRoleSelect = document.getElementById('gkCompleteRoleSelect');
-              if (profileRoleSelect && user.role) {
-                profileRoleSelect.value = user.role;
-              }
-              const profileInstInput = document.getElementById('gkCompleteInstitutionInput');
-              if (profileInstInput && user.institution) {
-                profileInstInput.value = user.institution;
-              }
-            }
-          } else {
-            // Completely signed out: show main login card cleanly!
-            if (mainGkCard) mainGkCard.style.display = 'block';
-            if (verifCard) verifCard.style.display = 'none';
-            if (profileCard) profileCard.style.display = 'none';
           }
         }
       }
@@ -2461,41 +2432,6 @@
         const instFieldGroup = document.getElementById('institutionFieldGroup');
         const setupSubmitBtn = document.getElementById('setupSubmitBtn');
 
-        // Mode switchers for Gatekeeper Overlay (Initial Screen)
-        const gkTabReg = document.getElementById('gkTabRegister');
-        const gkTabLog = document.getElementById('gkTabLogin');
-        const gkRoleGroup = document.getElementById('gkRoleGroup');
-        const gkNameGroup = document.getElementById('gkNameGroup');
-        const gkInstGroup = document.getElementById('gkInstitutionGroup');
-        const gkSubmitBtn = document.getElementById('gkSubmitBtn');
-        const gkForgotLink = document.getElementById('gkForgotPasswordLink');
-        const gkFullNameInput = document.getElementById('gkFullNameInput');
-
-        if (gkTabReg && gkTabLog) {
-          gkTabReg.addEventListener('click', () => {
-            gkTabReg.classList.add('active');
-            gkTabLog.classList.remove('active');
-            if (gkRoleGroup) gkRoleGroup.style.display = 'block';
-            if (gkNameGroup) gkNameGroup.style.display = 'block';
-            if (gkInstGroup) gkInstGroup.style.display = 'block';
-            if (gkForgotLink) gkForgotLink.style.display = 'none';
-            if (gkFullNameInput) gkFullNameInput.setAttribute('required', 'required');
-            if (gkSubmitBtn) gkSubmitBtn.textContent = 'Complete Setup & Enter Suite';
-            clearAuthError();
-          });
-          gkTabLog.addEventListener('click', () => {
-            gkTabLog.classList.add('active');
-            gkTabReg.classList.remove('active');
-            if (gkRoleGroup) gkRoleGroup.style.display = 'none';
-            if (gkNameGroup) gkNameGroup.style.display = 'none';
-            if (gkInstGroup) gkInstGroup.style.display = 'none';
-            if (gkForgotLink) gkForgotLink.style.display = 'inline';
-            if (gkFullNameInput) gkFullNameInput.removeAttribute('required');
-            if (gkSubmitBtn) gkSubmitBtn.textContent = 'Sign In to Account';
-            clearAuthError();
-          });
-        }
-
         // Mode switchers inside Auth Modal (Header Profile Screen)
         if (tabModeReg && tabModeLog) {
           const nameInput = document.getElementById('setupFullNameInput');
@@ -2740,7 +2676,7 @@
             if (window.firebaseService) {
               const res = await window.firebaseService.signInWithGoogle();
               if (res && res.user) {
-                this.userManager.currentUser = res.user;
+                this.userManager.saveUser(res.user);
                 if (!localStorage.getItem('cc_trial_expiry')) {
                   this.subManager.startFreeTrial('monthly');
                 }
@@ -2846,39 +2782,6 @@
         const modalGoogleBtn = document.getElementById('modalGoogleAuthBtn');
         if (modalGoogleBtn) {
           modalGoogleBtn.addEventListener('click', () => performGoogleSignIn(modalGoogleBtn));
-        }
-
-        // Initial Full-Screen Gatekeeper Form Submission
-        const gatekeeperAuthForm = document.getElementById('gatekeeperAuthForm');
-        if (gatekeeperAuthForm) {
-          gatekeeperAuthForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const isReg = gkTabReg && gkTabReg.classList.contains('active');
-            const emailInput = document.getElementById('gkEmailInput');
-            const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
-            const passInput = document.getElementById('gkPasswordInput');
-            const pass = passInput ? passInput.value : '';
-            const roleSelect = document.getElementById('gkRoleSelect');
-            const role = (email === 'admin@criticalcare.med') ? 'admin' : (roleSelect ? roleSelect.value : 'Doctor');
-            const nameInput = document.getElementById('gkFullNameInput');
-            let name = nameInput ? nameInput.value.trim() : (isReg ? 'Doctor' : email.split('@')[0]);
-            const instInput = document.getElementById('gkInstitutionInput');
-            const inst = instInput ? instInput.value.trim() : '';
-
-            if (role === 'Doctor' && name && !name.toLowerCase().startsWith('dr')) {
-              name = 'Dr. ' + name;
-            }
-
-            performAuthAction('gatekeeper', isReg, email, pass, name, role, inst, gkSubmitBtn);
-          });
-        }
-
-        if (gkForgotLink) {
-          gkForgotLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            const emailInput = document.getElementById('gkEmailInput');
-            forgotPasswordHandler(emailInput);
-          });
         }
 
         // Account Setup form inside Auth Modal

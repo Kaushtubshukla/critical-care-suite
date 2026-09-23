@@ -267,7 +267,7 @@ class FirebaseService {
       if (profile.tier) localStorage.setItem(this.subKey, profile.tier);
       if (profile.trialExpiry) localStorage.setItem(this.trialExpiryKey, profile.trialExpiry.toString());
       
-      if (isVerified && isProfileDone) {
+      if (this.currentUser && this.currentUser.isLoggedIn) {
         document.documentElement.classList.add('is-authenticated-user');
       } else {
         document.documentElement.classList.remove('is-authenticated-user');
@@ -406,10 +406,7 @@ class FirebaseService {
       const saved = localStorage.getItem(this.authKey);
       if (saved) {
         this.currentUser = JSON.parse(saved);
-        const isVerified = this.currentUser && (this.currentUser.emailVerified || this.currentUser.role === 'admin' || (this.currentUser.email && this.currentUser.email.toLowerCase() === 'admin@criticalcare.med'));
-        const isProfileDone = this.currentUser && ((this.currentUser.role === 'admin') || (this.currentUser.isProfileComplete === true && !!this.currentUser.role && !!this.currentUser.name));
-
-        if (this.currentUser && this.currentUser.isLoggedIn && isVerified && isProfileDone) {
+        if (this.currentUser && this.currentUser.isLoggedIn) {
           document.documentElement.classList.add('is-authenticated-user');
         } else {
           document.documentElement.classList.remove('is-authenticated-user');
@@ -527,10 +524,11 @@ class FirebaseService {
         localStorage.setItem(this.subKey, 'trial');
         localStorage.setItem(this.trialExpiryKey, trialExpiry.toString());
         
-        // Gatekeeper barrier remains ACTIVE until verified
-        document.documentElement.classList.remove('is-authenticated-user');
+        if (this.currentUser && this.currentUser.isLoggedIn) {
+          document.documentElement.classList.add('is-authenticated-user');
+        }
         this._notifyAuthChange();
-        return { success: true, user: this.currentUser, requiresVerification: true, email: cleanEmail };
+        return { success: true, user: this.currentUser, requiresVerification: false, email: cleanEmail };
       } catch (authErr) {
         console.error('Firebase createUser error:', authErr);
         if (authErr.code === 'auth/email-already-in-use') {
@@ -620,7 +618,7 @@ class FirebaseService {
         if (this.currentUser.tier) localStorage.setItem(this.subKey, this.currentUser.tier);
         if (this.currentUser.trialExpiry) localStorage.setItem(this.trialExpiryKey, this.currentUser.trialExpiry.toString());
         
-        if (isVerified && isProfileDone) {
+        if (this.currentUser && this.currentUser.isLoggedIn) {
           document.documentElement.classList.add('is-authenticated-user');
         } else {
           document.documentElement.classList.remove('is-authenticated-user');
@@ -629,8 +627,8 @@ class FirebaseService {
         return { 
           success: true, 
           user: this.currentUser, 
-          requiresVerification: !isVerified, 
-          requiresProfileCompletion: !isProfileDone, 
+          requiresVerification: false, 
+          requiresProfileCompletion: false, 
           email: cleanEmail 
         };
       } catch (authErr) {
