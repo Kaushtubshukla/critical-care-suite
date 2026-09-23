@@ -239,13 +239,37 @@ export class App {
     const container = document.getElementById('categoryChipsContainer');
     if (!container) return;
 
+    // Dynamic categories supporting standard + custom categories
+    const baseCategories = [
+      { id: 'all', name: 'All Tools' },
+      { id: 'respiratory', name: 'Respiratory' },
+      { id: 'neuro', name: 'Neurocritical' },
+      { id: 'cardiac', name: 'Cardiac & Shock' },
+      { id: 'abg', name: 'ABG Diagnostics' }
+    ];
+    const knownCatIds = new Set(baseCategories.map(c => c.id));
+    this.simulators.forEach(sim => {
+      if (sim.category && !knownCatIds.has(sim.category)) {
+        knownCatIds.add(sim.category);
+        baseCategories.push({
+          id: sim.category,
+          name: sim.categoryLabel || `${sim.category.charAt(0).toUpperCase() + sim.category.slice(1)} Care`
+        });
+      }
+    });
+
+    this.categories = baseCategories;
+
     container.innerHTML = this.categories
       .map(cat => {
         const isActive = cat.id === this.activeCategory;
+        const count = cat.id === 'all' 
+          ? this.simulators.length 
+          : this.simulators.filter(s => s.category === cat.id).length;
         return `
           <button class="chip-btn ${isActive ? 'active' : ''}" data-category-id="${cat.id}">
             <span>${cat.name}</span>
-            <span class="chip-count">${cat.count}</span>
+            <span class="chip-count">${count}</span>
           </button>
         `;
       })
@@ -307,33 +331,114 @@ export class App {
       return;
     }
 
-    // If "all" category is selected and no search query, group by categories for clean structured hierarchy
-    if (this.activeCategory === 'all' && !this.searchQuery) {
-      const sections = [
-        { id: 'respiratory', title: 'Respiratory Critical Care', badge: 'Ventilator & Oxygenation', list: filtered.filter(s => s.category === 'respiratory') },
-        { id: 'neuro', title: 'Neurocritical Care', badge: 'BTF & Stroke Algorithms', list: filtered.filter(s => s.category === 'neuro') },
-        { id: 'cardiac', title: 'Cardiac Critical Care & Shock', badge: 'ECG & Hemodynamics', list: filtered.filter(s => s.category === 'cardiac') },
-        { id: 'abg', title: 'ABG Diagnostics', badge: 'Camera OCR & 6-Step', list: filtered.filter(s => s.category === 'abg') }
-      ].filter(sec => sec.list.length > 0);
+    // Find latest simulator (marked isLatest, or having newest publishedAt)
+    const latestSim = this.simulators.find(s => s.isLatest) ||
+      this.simulators.filter(s => s.publishedAt).sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))[0];
 
-      container.innerHTML = sections
-        .map(sec => `
-          <div class="sim-section">
-            <div class="section-header">
-              <div>
-                <h3 class="section-title">${sec.title}</h3>
-                <span class="section-badge">${sec.badge}</span>
-              </div>
-              <span class="section-count">${sec.list.length} Tools</span>
+    let latestBannerHtml = '';
+    if (latestSim && this.activeCategory === 'all' && !this.searchQuery) {
+      const isUnlocked = isPro || (latestSim.tier === 'free');
+      latestBannerHtml = `
+        <div class="latest-simulator-banner" data-launch-id="${latestSim.id}">
+          <div class="latest-banner-header">
+            <div class="latest-badge-wrap">
+              <span class="pulse-dot"></span>
+              <span class="latest-badge-text">✨ LATEST SIMULATOR ADDED</span>
             </div>
-            <div class="sim-cards-grid">
-              ${sec.list.map(sim => this.createSimulatorCardHtml(sim, isPro)).join('')}
+            <span class="latest-cat-pill">${latestSim.categoryLabel || latestSim.category}</span>
+          </div>
+          <div class="latest-banner-body">
+            <div class="latest-banner-text">
+              <h3 class="latest-banner-title">${latestSim.title}</h3>
+              <p class="latest-banner-desc">${latestSim.description || latestSim.subtitle}</p>
+            </div>
+            <div class="latest-banner-action">
+              <button class="btn-latest-launch" data-launch-id="${latestSim.id}">
+                <span>${isUnlocked ? '🚀 Launch Latest Tool' : '🔒 Unlock Latest'}</span>
+                <span class="arrow">→</span>
+              </button>
             </div>
           </div>
-        `)
-        .join('');
+        </div>
+      `;
+    }
+
+    // If "all" category is selected and no search query, group by categories for clean structured hierarchy
+    if (this.activeCategory === 'all' && !this.searchQuery) {
+      const baseCategories = [
+        { id: 'respiratory', title: 'Respiratory Critical Care', badge: 'Ventilator & Oxygenation' },
+        { id: 'neuro', title: 'Neurocritical Care', badge: 'BTF & Stroke Algorithms' },
+        { id: 'cardiac', title: 'Cardiac Critical Care & Shock', badge: 'ECG & Hemodynamics' },
+        { id: 'abg', title: 'ABG Diagnostics', badge: 'Camera OCR & 6-Step' }
+      ];
+
+      const knownCatIds = new Set(baseCategories.map(c => c.id));
+      const sections = baseCategories.map(cat => ({
+        ...cat,
+        list: filtered.filter(s => s.category === cat.id)
+      }));
+
+      // Gather any custom or newly published categories dynamically
+      const otherSims = filtered.filter(s => !knownCatIds.has(s.category));
+      const otherCatsMap = {};
+      otherSims.forEach(sim => {
+        const catKey = sim.category || 'other';
+        if (!otherCatsMap[catKey]) {
+          otherCatsMap[catKey] = {
+            id: catKey,
+            title: sim.categoryLabel || `${catKey.charAt(0).toUpperCase() + catKey.slice(1)} Critical Care`,
+            badge: 'Clinical Simulation',
+            list: []
+          };
+        }
+        otherCatsMap[catKey].list.push(sim);
+      });
+      Object.values(otherCatsMap).forEach(catSec => sections.push(catSec));
+
+      // In each category section, sort so the newest simulator (isLatest or newest publishedAt) is placed at the top!
+      sections.forEach(sec => {
+        sec.list.sort((a, b) => {
+          if (a.isLatest) return -1;
+          if (b.isLatest) return 1;
+          if (a.publishedAt && b.publishedAt) return new Date(b.publishedAt) - new Date(a.publishedAt);
+          if (a.publishedAt) return -1;
+          if (b.publishedAt) return 1;
+          return 0;
+        });
+      });
+
+      const activeSections = sections.filter(sec => sec.list.length > 0);
+
+      container.innerHTML = `
+        ${latestBannerHtml}
+        ${activeSections
+          .map(sec => `
+            <div class="sim-section" id="cat-section-${sec.id}">
+              <div class="section-header">
+                <div>
+                  <h3 class="section-title">${sec.title}</h3>
+                  <span class="section-badge">${sec.badge}</span>
+                </div>
+                <span class="section-count">${sec.list.length} Tools</span>
+              </div>
+              <div class="sim-cards-grid">
+                ${sec.list.map(sim => this.createSimulatorCardHtml(sim, isPro)).join('')}
+              </div>
+            </div>
+          `)
+          .join('')}
+      `;
     } else {
-      // Flat grid for filtered/searched results
+      // Flat grid for filtered/searched results sorted by newest first
+      filtered.sort((a, b) => {
+        if (a.isLatest) return -1;
+        if (b.isLatest) return 1;
+        if (a.publishedAt && b.publishedAt) return new Date(b.publishedAt) - new Date(a.publishedAt);
+        if (a.publishedAt) return -1;
+        if (b.publishedAt) return 1;
+        return 0;
+      });
+
       container.innerHTML = `
         <div class="sim-cards-grid">
           ${filtered.map(sim => this.createSimulatorCardHtml(sim, isPro)).join('')}
@@ -348,14 +453,22 @@ export class App {
     const isFree = sim.tier === 'free';
     const isUnlocked = isFree || isPro;
     const isFav = this.favorites.includes(sim.id);
+    const isLatest = sim.isLatest || sim.isNewRelease;
+
+    const latestPill = isLatest 
+      ? `<span class="badge-latest-pill"><span class="pulse-dot"></span> ✨ LATEST SIMULATOR</span>` 
+      : '';
 
     return `
-      <div class="sim-card ${isUnlocked ? 'unlocked' : 'locked'}" data-sim-id="${sim.id}">
+      <div class="sim-card ${isUnlocked ? 'unlocked' : 'locked'} ${isLatest ? 'is-latest-card' : ''}" data-sim-id="${sim.id}">
         <div class="sim-card-top">
-          <div class="sim-badge ${isUnlocked ? (isFree ? 'badge-free' : 'badge-pro-unlocked') : 'badge-pro-locked'}">
-            ${isUnlocked 
-              ? (isFree ? '🟢 FREE ACCESS' : '💎 PRO UNLOCKED') 
-              : '🔒 PRO LOCKED'}
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <div class="sim-badge ${isUnlocked ? (isFree ? 'badge-free' : 'badge-pro-unlocked') : 'badge-pro-locked'}">
+              ${isUnlocked 
+                ? (isFree ? '🟢 FREE ACCESS' : '💎 PRO UNLOCKED') 
+                : '🔒 PRO LOCKED'}
+            </div>
+            ${latestPill}
           </div>
           <button class="fav-btn ${isFav ? 'favorited' : ''}" data-fav-id="${sim.id}" title="Toggle Favorite" aria-label="Favorite">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="${isFav ? '#ef4444' : 'none'}" stroke="${isFav ? '#ef4444' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -460,7 +573,6 @@ export class App {
     const iframe = document.getElementById('simulatorIframe');
     const titleEl = document.getElementById('viewerTitle');
     const catBadge = document.getElementById('viewerCategoryBadge');
-    const viewerFavBtn = document.getElementById('viewerFavBtn');
 
     if (!viewer || !iframe) return;
 
@@ -469,8 +581,31 @@ export class App {
 
     this.updateViewerFavState();
 
-    // Set source
-    iframe.src = `${sim.file}?embedded=1&v=${Date.now()}`;
+    const cachedKey = `cch_sim_cached_${sim.id}`;
+    const cachedHtml = localStorage.getItem(cachedKey);
+
+    if (cachedHtml) {
+      iframe.srcdoc = cachedHtml;
+    } else if (sim.downloadUrl) {
+      iframe.srcdoc = '<!DOCTYPE html><html><body style="background:#07111a;color:#38bdf8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:90vh;text-align:center;padding:20px;"><div><div style="font-size:28px;margin-bottom:12px;">⚡</div><h3 style="margin:0 0 8px 0;color:#f1f5f9;">Loading Live Simulator...</h3><p style="font-size:13px;color:#94a3b8;margin:0;">Fetching clinical algorithms & telemetry from cloud...</p></div></body></html>';
+      fetch(sim.downloadUrl)
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.text();
+        })
+        .then(html => {
+          try { localStorage.setItem(cachedKey, html); } catch(e) {}
+          iframe.srcdoc = html;
+        })
+        .catch(err => {
+          console.warn('Could not fetch remote raw HTML, attempting local file fallback:', err);
+          iframe.removeAttribute('srcdoc');
+          iframe.src = `${sim.file}?embedded=1&v=${Date.now()}`;
+        });
+    } else {
+      iframe.removeAttribute('srcdoc');
+      iframe.src = `${sim.file}?embedded=1&v=${Date.now()}`;
+    }
 
     viewer.classList.add('active');
     document.body.classList.add('in-simulator-mode');
@@ -481,7 +616,10 @@ export class App {
     const iframe = document.getElementById('simulatorIframe');
 
     if (viewer) viewer.classList.remove('active');
-    if (iframe) iframe.src = 'about:blank';
+    if (iframe) {
+      iframe.removeAttribute('srcdoc');
+      iframe.src = 'about:blank';
+    }
 
     document.body.classList.remove('in-simulator-mode');
     this.activeSimulator = null;

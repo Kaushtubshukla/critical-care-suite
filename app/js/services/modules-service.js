@@ -131,20 +131,33 @@ class ModulesService {
   /**
    * 1-Click Publish from GitHub Queue to Live App
    */
-  publishFromGitHub(pendingId, config) {
+  async publishFromGitHub(pendingId, config) {
     const queue = this.getPendingGitHubModules();
     const item = queue.find(q => q.id === pendingId);
     if (!item) throw new Error('Pending module not found in queue');
 
     const published = this.getPublishedModules();
     
+    // Clear isLatest flag from existing modules so only this newly published one is featured
+    published.forEach(m => { m.isLatest = false; });
+
+    const selectedCategory = config.category || item.suggestedCategory || 'respiratory';
+    let catLabel = config.categoryLabel;
+    if (!catLabel) {
+      if (selectedCategory === 'respiratory') catLabel = 'Respiratory Care';
+      else if (selectedCategory === 'neuro') catLabel = 'Neurocritical Care';
+      else if (selectedCategory === 'cardiac') catLabel = 'Cardiac & Shock';
+      else if (selectedCategory === 'abg') catLabel = 'ABG Diagnostics';
+      else catLabel = `${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Critical Care`;
+    }
+
     // Create new published module record
     const newModule = {
       id: config.id || item.id,
       title: config.title || item.suggestedTitle,
       subtitle: config.subtitle || 'Clinical Decision Tool & Simulator',
-      category: config.category || item.suggestedCategory || 'respiratory',
-      categoryLabel: config.categoryLabel || 'Critical Care',
+      category: selectedCategory,
+      categoryLabel: catLabel,
       tier: config.tier || 'pro',
       file: item.filename,
       badgeText: config.tier === 'free' ? 'FREE ACCESS' : 'PRO LOCKED',
@@ -154,13 +167,16 @@ class ModulesService {
       duration: config.duration || '10 min',
       casesCount: config.casesCount || 'Clinical Scenarios',
       colorGradient: config.tier === 'free' ? 'from-emerald-600 to-teal-800' : 'from-indigo-600 to-slate-900',
-      iconBg: '#0f766e',
+      iconBg: selectedCategory === 'cardiac' ? '#b91c1c' : (selectedCategory === 'neuro' ? '#4338ca' : (selectedCategory === 'abg' ? '#047857' : '#0f766e')),
       highlights: config.highlights || ['Guideline Compliance', 'Interactive Decision Branches'],
       downloadUrl: item.downloadUrl || null,
+      rawUrl: item.downloadUrl || null,
+      isLatest: true,
+      isNewRelease: true,
       publishedAt: new Date().toISOString()
     };
 
-    // Add to published list
+    // Add to published list at the top
     published.unshift(newModule);
     this._savePublishedModules(published);
 
@@ -168,13 +184,23 @@ class ModulesService {
     const remainingQueue = queue.filter(q => q.id !== pendingId);
     this._savePendingQueue(remainingQueue);
 
+    // Synchronize to Cloud Firestore across all devices and domains
+    if (firebaseService && firebaseService.saveLiveCatalog) {
+      console.log(`[MODULES-SVC] Syncing newly published module "${newModule.title}" to Cloud Firestore...`);
+      try {
+        await firebaseService.saveLiveCatalog(this.getArchivedModules(), published);
+      } catch (e) {
+        console.warn('[MODULES-SVC] Cloud save notice:', e);
+      }
+    }
+
     return newModule;
   }
 
   /**
    * Toggle Module Tier (Free vs Pro)
    */
-  toggleTier(moduleId, newTier) {
+  async toggleTier(moduleId, newTier) {
     const published = this.getPublishedModules();
     const mod = published.find(m => m.id === moduleId);
     if (mod) {
@@ -182,6 +208,11 @@ class ModulesService {
       mod.badgeText = newTier === 'free' ? 'FREE ACCESS' : 'PRO LOCKED';
       mod.badgeColor = newTier === 'free' ? 'emerald' : 'amber';
       this._savePublishedModules(published);
+      if (firebaseService && firebaseService.saveLiveCatalog) {
+        try {
+          await firebaseService.saveLiveCatalog(this.getArchivedModules(), published);
+        } catch (e) {}
+      }
       return mod;
     }
     throw new Error('Module not found');

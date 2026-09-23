@@ -514,7 +514,7 @@ class AdminDashboardController {
     // Confirm 1-Click Publish
     const confirmPubBtn = document.getElementById('confirmPublishBtn');
     if (confirmPubBtn) {
-      confirmPubBtn.addEventListener('click', () => {
+      confirmPubBtn.addEventListener('click', async () => {
         if (!this.currentPublishId) return;
 
         const config = {
@@ -524,9 +524,22 @@ class AdminDashboardController {
           description: document.getElementById('pubDesc').value
         };
 
-        const published = modulesService.publishFromGitHub(this.currentPublishId, config);
-        document.getElementById('publishConfigModal').classList.remove('active');
-        this.showToast(`🎉 Published '${published.title}' live to mobile app!`);
+        confirmPubBtn.disabled = true;
+        confirmPubBtn.textContent = '⏳ Publishing to Live App & Cloud...';
+
+        try {
+          const published = await modulesService.publishFromGitHub(this.currentPublishId, config);
+          document.getElementById('publishConfigModal').classList.remove('active');
+          this.showToast(`🎉 Published '${published.title}' live to mobile app!`);
+          this.renderReviewQueue();
+          this.renderModulesLibrary();
+          this.renderModulesPricingTable();
+        } catch (err) {
+          this.showToast('Publishing failed: ' + err.message, 'error');
+        } finally {
+          confirmPubBtn.disabled = false;
+          confirmPubBtn.textContent = '🚀 Confirm & Publish Live to Mobile App Now';
+        }
       });
     }
 
