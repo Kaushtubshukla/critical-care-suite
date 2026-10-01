@@ -118,7 +118,14 @@ class FirebaseService {
 
       this.fbDb = getFirestore(this.fbApp);
       this.googleProvider = new GoogleAuthProvider();
-      this.googleProvider.setCustomParameters({ prompt: 'select_account' });
+      // Force account chooser every time — show ALL signed-in Google accounts
+      this.googleProvider.setCustomParameters({
+        prompt: 'select_account',
+        include_granted_scopes: 'true'
+      });
+      // Add email scope so we always get the email
+      this.googleProvider.addScope('email');
+      this.googleProvider.addScope('profile');
       this.isRealFirebaseActive = true;
 
       console.log('✅ Connected to live Google Firebase Cloud:', FIREBASE_CONFIG.projectId);
@@ -439,6 +446,26 @@ class FirebaseService {
     return () => {
       this.listeners = this.listeners.filter(cb => cb !== callback);
     };
+  }
+
+  // Refresh an expired idToken using the Google Secure Token REST API
+  async _refreshIdToken(refreshToken) {
+    const url = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_CONFIG.apiKey}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}`,
+        signal: controller.signal
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.error?.message || 'Token refresh failed');
+      return data.id_token || data.idToken;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   // Direct Google Identity Platform REST helper (100% reliable across iOS WKWebView, Android WebView, and Desktop)
@@ -762,7 +789,12 @@ class FirebaseService {
 
     if (this.isRealFirebaseActive && this.fbAuth) {
       try {
-        
+        // Force account picker every time — clear any cached login hint
+        // so the user sees ALL their Google accounts on the device
+        this.googleProvider.setCustomParameters({
+          prompt: 'select_account',
+          include_granted_scopes: 'true'
+        });
 
         let cred;
         try {
@@ -772,6 +804,11 @@ class FirebaseService {
           if (popupErr.code === 'auth/popup-blocked' || 
               popupErr.code === 'auth/operation-not-supported-in-this-environment' ||
               popupErr.code === 'auth/missing-initial-state') {
+            // Also set on redirect path
+            this.googleProvider.setCustomParameters({
+              prompt: 'select_account',
+              include_granted_scopes: 'true'
+            });
             await signInWithRedirect(this.fbAuth, this.googleProvider, browserPopupRedirectResolver);
             return { pending: true };
           }
@@ -858,25 +895,58 @@ class FirebaseService {
 
   // --- 5. Delete Account & Personal Data (App Store & Play Store Compliance) ---
   async deleteCurrentUser() {
-    if (this.isRealFirebaseActive && this.fbAuth && this.fbAuth.currentUser) {
-      try {
-        const uid = this.fbAuth.currentUser.uid;
-        // Delete Firestore document
-        if (this.fbDb) {
-          try {
-            
-            await deleteDoc(doc(this.fbDb, 'users', uid));
-          } catch (e) {}
+    const uid = (this.currentUser && this.currentUser.uid) ||
+                (this.fbAuth && this.fbAuth.currentUser && this.fbAuth.currentUser.uid);
+    const idToken = this.currentUser && this.currentUser.idToken;
+
+    // Step 1: Delete Firestore user document (via SDK or REST)
+    if (uid) {
+      if (this.fbDb) {
+        try {
+          await deleteDoc(doc(this.fbDb, 'users', uid));
+          console.log('✅ Firestore user doc deleted:', uid);
+        } catch (e) {
+          console.warn('Firestore deleteDoc notice:', e.message);
         }
-        // Delete Firebase Auth user
-        
-        await deleteUser(this.fbAuth.currentUser);
-      } catch (err) {
-        console.warn('Firebase delete user error:', err.message);
       }
     }
 
-    // Clear all local persistent data
+    // Step 2: Delete Firebase Auth account
+    // Primary path: SDK deleteUser (works when fbAuth.currentUser is set — i.e. Google Sign-In)
+    if (this.fbAuth && this.fbAuth.currentUser) {
+      try {
+        await deleteUser(this.fbAuth.currentUser);
+        console.log('✅ Firebase Auth account deleted via SDK');
+      } catch (err) {
+        console.warn('SDK deleteUser notice (will try REST fallback):', err.message);
+      }
+    }
+
+    // Fallback path: REST API deleteAccount (works for email/password users authenticated via REST)
+    // This is the CRITICAL path for our email/password flow since fbAuth.currentUser is null
+    if (idToken) {
+      try {
+        await this._callIdentityApi('delete', { idToken });
+        console.log('✅ Firebase Auth account deleted via REST API');
+      } catch (restErr) {
+        // Token may be expired — try refreshing it first
+        if (restErr.rawCode && (restErr.rawCode.includes('INVALID_ID_TOKEN') || restErr.rawCode.includes('TOKEN_EXPIRED'))) {
+          try {
+            const freshToken = await this._refreshIdToken(this.currentUser.refreshToken);
+            if (freshToken) {
+              await this._callIdentityApi('delete', { idToken: freshToken });
+              console.log('✅ Firebase Auth account deleted via REST API (after token refresh)');
+            }
+          } catch (refreshErr) {
+            console.warn('REST delete after refresh notice:', refreshErr.message);
+          }
+        } else {
+          console.warn('REST deleteAccount notice:', restErr.message);
+        }
+      }
+    }
+
+    // Step 3: Clear all local persistent data
     try {
       localStorage.removeItem(this.authKey);
       localStorage.removeItem(this.subKey);
