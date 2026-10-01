@@ -12,17 +12,24 @@
   <script>
     (function() {
       // 1. Check persistent user authentication synchronously (Must be verified or admin)
+      var isAuth = false;
       try {
         var savedProfile = localStorage.getItem('critical_care_user_profile');
         if (savedProfile) {
           var u = JSON.parse(savedProfile);
           if (u && u.isLoggedIn) {
-            document.documentElement.classList.add('is-authenticated-user');
-          } else {
-            document.documentElement.classList.remove('is-authenticated-user');
+            isAuth = true;
           }
         }
       } catch (e) {}
+
+      if (isAuth) {
+        document.documentElement.classList.add('is-authenticated-user');
+        document.documentElement.classList.remove('needs-onboarding');
+      } else {
+        document.documentElement.classList.remove('is-authenticated-user');
+        document.documentElement.classList.add('needs-onboarding');
+      }
 
       // 2. Detect native mobile platform & screen size
       var isNative = window.Capacitor !== undefined || 
@@ -37,9 +44,15 @@
     })();
   </script>
 
-  <!-- App Stylesheet -->
-  <link rel="stylesheet" href="app/css/mobile-shell.css">
-  <style>
+  <!-- Critical First-Paint Rules: Prevent any flash or layout shift on startup -->
+  <style id="criticalLaunchStyle">
+    html, body {
+      background-color: #07111a !important;
+      margin: 0;
+      padding: 0;
+      overscroll-behavior-y: none;
+    }
+
     /* Suppress Microsoft Edge / Windows Chromium native duplicate password reveal eye icon */
     input[type="password"]::-ms-reveal,
     input[type="password"]::-ms-clear,
@@ -50,7 +63,31 @@
       height: 0 !important;
       pointer-events: none !important;
     }
+
+    /* Suppress onboarding & gatekeeper immediately when practitioner is authenticated */
+    html.is-authenticated-user #iosOnboardingOverlay,
+    html.is-authenticated-user .ios-onboarding-overlay,
+    html.is-authenticated-user #authGatekeeperOverlay,
+    html.is-authenticated-user .auth-gatekeeper-overlay {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      transition: none !important;
+    }
+
+    /* When practitioner is not authenticated, render onboarding overlay immediately on Frame 0 with ZERO flash */
+    html.needs-onboarding #iosOnboardingOverlay.active,
+    html:not(.is-authenticated-user) #iosOnboardingOverlay.active {
+      display: flex !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
   </style>
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="app/css/mobile-shell.css">
   
   <!-- Live Google Firebase Cloud Engine -->
   <script type="module" src="app/js/services/firebase-service.js"></script>
@@ -73,7 +110,7 @@
         <!-- ===============================================================
              AI MEDICAL CASE SIMULATION - iOS GUIDED ONBOARDING (Images 2, 3, 4, 5)
              =============================================================== -->
-        <div class="ios-onboarding-overlay" id="iosOnboardingOverlay" aria-modal="true" role="dialog">
+        <div class="ios-onboarding-overlay active" id="iosOnboardingOverlay" aria-modal="true" role="dialog">
           
           <!-- Top Bar with Brand & Prominent Sign In Button -->
           <div class="onboard-top-bar" id="onboardTopBar">
@@ -1473,9 +1510,11 @@
         } catch (e) {}
         if (this.currentUser && this.currentUser.isLoggedIn) {
           document.documentElement.classList.add('is-authenticated-user');
+          document.documentElement.classList.remove('needs-onboarding');
           if (window.appInstance) window.appInstance.updateUserUI();
         } else {
           document.documentElement.classList.remove('is-authenticated-user');
+          document.documentElement.classList.add('needs-onboarding');
         }
       }
 
@@ -1494,6 +1533,7 @@
           localStorage.removeItem(USER_STORAGE_KEY);
         } catch (e) {}
         document.documentElement.classList.remove('is-authenticated-user');
+        document.documentElement.classList.add('needs-onboarding');
 
         const gatekeeper = document.getElementById('authGatekeeperOverlay');
         if (gatekeeper) {
@@ -1540,6 +1580,7 @@
           isLoggedIn: false
         };
         document.documentElement.classList.remove('is-authenticated-user');
+        document.documentElement.classList.add('needs-onboarding');
 
         const mainGkCard = document.getElementById('gkMainAuthCard');
         const verifCard = document.getElementById('gkVerificationCard');
@@ -2078,10 +2119,23 @@
         if (speechBubble) {
           speechBubble.innerHTML = `I pulled some strings for you, ${cleanName}!<br>They dropped the price by 88% — good for one hour only.`;
         }
-        if (step1) step1.style.display = 'none';
-        if (step2) step2.style.display = 'none';
-        if (step3) step3.style.display = 'none';
-        if (step4) step4.style.display = 'block';
+        if (step1) {
+          step1.style.display = 'none';
+          step1.classList.remove('slide-in-left', 'slide-in-right');
+        }
+        if (step2) {
+          step2.style.display = 'none';
+          step2.classList.remove('slide-in-left', 'slide-in-right');
+        }
+        if (step3) {
+          step3.style.display = 'none';
+          step3.classList.remove('slide-in-left', 'slide-in-right');
+        }
+        if (step4) {
+          step4.style.display = 'block';
+          step4.classList.remove('slide-in-left');
+          step4.classList.add('slide-in-right');
+        }
         if (dash1) dash1.classList.add('active');
         if (dash2) dash2.classList.add('active');
         if (dash3) dash3.classList.add('active');
@@ -2163,8 +2217,15 @@
               speechBubble.innerHTML = `Nice to meet you, ${cleanDisplay}.<br>Student, doctor or healthcare worker — which one are you?`;
             }
             if (dash2) dash2.classList.add('active');
-            if (step1) step1.style.display = 'none';
-            if (step2) step2.style.display = 'block';
+            if (step1) {
+              step1.style.display = 'none';
+              step1.classList.remove('slide-in-left', 'slide-in-right');
+            }
+            if (step2) {
+              step2.style.display = 'block';
+              step2.classList.remove('slide-in-left');
+              step2.classList.add('slide-in-right');
+            }
           };
 
           step1Btn.addEventListener('click', advanceStep1);
@@ -2185,8 +2246,15 @@
               speechBubble.innerHTML = `Hey, welcome aboard!<br>I'd love to know — what's your name?`;
             }
             if (dash2) dash2.classList.remove('active');
-            if (step2) step2.style.display = 'none';
-            if (step1) step1.style.display = 'block';
+            if (step2) {
+              step2.style.display = 'none';
+              step2.classList.remove('slide-in-left', 'slide-in-right');
+            }
+            if (step1) {
+              step1.style.display = 'block';
+              step1.classList.remove('slide-in-right');
+              step1.classList.add('slide-in-left');
+            }
             if (nameInput) nameInput.focus();
           });
         }
@@ -3080,6 +3148,7 @@
 
         if (canEnterApp) {
           document.documentElement.classList.add('is-authenticated-user');
+          document.documentElement.classList.remove('needs-onboarding');
           if (iosOverlay) iosOverlay.classList.remove('active');
           if (gatekeeper) {
             gatekeeper.classList.add('authenticated-hidden');
@@ -3123,6 +3192,7 @@
           }
         } else {
           document.documentElement.classList.remove('is-authenticated-user');
+          document.documentElement.classList.add('needs-onboarding');
           if (iosOverlay) {
             iosOverlay.classList.add('active');
           }
