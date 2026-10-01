@@ -516,25 +516,32 @@ class FirebaseService {
         returnSecureToken: true
       }).catch(e => console.warn('Update displayName notice:', e.message));
 
-      // 3. Send official email verification link via REST (non-blocking)
-      this._callIdentityApi('sendOobCode', {
-        idToken: idToken,
-        requestType: 'VERIFY_EMAIL'
-      }).catch(e => console.warn('Verification email dispatch notice:', e.message));
+      // 3. Send official email verification link via REST (awaited so errors are visible)
+      try {
+        await this._callIdentityApi('sendOobCode', {
+          idToken: idToken,
+          requestType: 'VERIFY_EMAIL'
+        });
+        console.log('✅ Verification email dispatched to:', cleanEmail);
+      } catch (verifErr) {
+        // Non-fatal: account is created, but log the real error
+        console.error('⚠️ Verification email failed to send:', verifErr.message);
+      }
 
+      const isAdminEmail = (cleanEmail === 'admin@criticalcare.med');
       const userDocData = {
         uid: uid,
         name: displayName,
         email: cleanEmail,
-        emailVerified: false,
+        emailVerified: isAdminEmail,   // Only admin is pre-verified
         role: role,
         institution: institution,
         tier: 'trial',
         trialExpiry: trialExpiry,
         idToken: idToken,
         refreshToken: signupRes.refreshToken,
-        isVIP: role === 'admin',
-        isLoggedIn: true,
+        isVIP: isAdminEmail,
+        isLoggedIn: isAdminEmail,      // Block app access until email is verified
         provider: 'password',
         isProfileComplete: true,
         createdAt: new Date().toISOString()
@@ -549,16 +556,26 @@ class FirebaseService {
         }
       }
 
+      // Store the pending (unverified) session so the verification wall can poll
       this.currentUser = userDocData;
       localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
-      localStorage.setItem(this.subKey, 'trial');
-      localStorage.setItem(this.trialExpiryKey, trialExpiry.toString());
-      
-      if (this.currentUser && this.currentUser.isLoggedIn) {
+      if (!isAdminEmail) {
+        // Do NOT mark as authenticated — wait for email verification
+        document.documentElement.classList.remove('is-authenticated-user');
+      } else {
+        localStorage.setItem(this.subKey, 'trial');
+        localStorage.setItem(this.trialExpiryKey, trialExpiry.toString());
         document.documentElement.classList.add('is-authenticated-user');
       }
+
+      // Notify listeners with the pending user (isLoggedIn: false for unverified)
       this._notifyAuthChange();
-      return { success: true, user: this.currentUser, requiresVerification: false, email: cleanEmail };
+      return { 
+        success: true, 
+        user: this.currentUser, 
+        requiresVerification: !isAdminEmail,   // ← TRUE for all real signups
+        email: cleanEmail 
+      };
     } catch (authErr) {
       console.error('Firebase createUser error:', authErr);
       const raw = authErr.rawCode || authErr.message || '';

@@ -39,6 +39,18 @@
 
   <!-- App Stylesheet -->
   <link rel="stylesheet" href="app/css/mobile-shell.css">
+  <style>
+    /* Suppress Microsoft Edge / Windows Chromium native duplicate password reveal eye icon */
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear,
+    input::-ms-reveal,
+    input::-ms-clear {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      pointer-events: none !important;
+    }
+  </style>
   
   <!-- Live Google Firebase Cloud Engine -->
   <script type="module" src="app/js/services/firebase-service.js"></script>
@@ -58,8 +70,255 @@
     <main class="device-frame-container" id="deviceFrameContainer">
       <div class="phone-screen">
         
+        <!-- ===============================================================
+             AI MEDICAL CASE SIMULATION - iOS GUIDED ONBOARDING (Images 2, 3, 4, 5)
+             =============================================================== -->
+        <div class="ios-onboarding-overlay" id="iosOnboardingOverlay" aria-modal="true" role="dialog">
+          
+          <!-- Top Bar with Brand & Prominent Sign In Button -->
+          <div class="onboard-top-bar" id="onboardTopBar">
+            <div class="onboard-brand-pill">
+              <span class="pulse-dot"></span>
+              <span class="onboard-brand-text">AI Medical Case</span>
+            </div>
+            <button type="button" class="onboard-top-signin-btn" id="onboardTopSignInBtn">
+              <span>Sign In</span>
+              <span style="font-size: 13px;">➔</span>
+            </button>
+          </div>
+
+          <!-- Animated Guide Character & Speech Bubble -->
+          <div class="onboard-guide-container" id="onboardGuideContainer">
+            <div class="onboard-guide-avatar-box">
+              <img src="app/images/onboarding/guide_arms_crossed.jpg" alt="Doctor Guide" id="onboardGuideAvatar" class="onboard-guide-avatar-img">
+            </div>
+            <div class="onboard-speech-bubble" id="onboardSpeechBubble">
+              Hey, welcome aboard!<br>I'd love to know — what's your name?
+            </div>
+          </div>
+
+          <!-- Bottom Sheet Modal with 4-Step Funnel -->
+          <div class="onboard-bottom-sheet" id="onboardBottomSheet">
+            
+            <!-- 2-Dash Progress Indicator for Guided Identity -->
+            <div class="onboard-progress-dashes" id="onboardDashes">
+              <div class="onboard-dash active" id="onboardDash1"></div>
+              <div class="onboard-dash" id="onboardDash2"></div>
+            </div>
+
+            <!-- STEP 1: What's your name? (Image 4) -->
+            <div class="onboard-step-panel" id="onboardStep1" style="display: block;">
+              <h2 class="onboard-step-title">What's your name?</h2>
+              <div class="onboard-input-wrap">
+                <input type="text" id="onboardNameInput" class="onboard-text-input" placeholder="Type your name" autocomplete="name">
+              </div>
+              <button type="button" class="onboard-primary-btn ready" id="onboardStep1Btn">
+                <span>CONTINUE</span>
+                <span>➔</span>
+              </button>
+              <div class="onboard-privacy-footer">
+                Your info stays private • You can change it later
+              </div>
+              <div style="text-align: center; margin-top: 14px;">
+                <button type="button" id="onboardSwitchToLoginBtn" style="background: none; border: none; font-size: 12.5px; color: #0284c7; font-weight: 700; cursor: pointer; text-decoration: underline;">
+                  Already have an account? Log In
+                </button>
+              </div>
+            </div>
+
+            <!-- STEP 2: What do you do? (Image 5) -->
+            <div class="onboard-step-panel" id="onboardStep2" style="display: none;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <button type="button" id="onboardBackToStep1Btn" style="background: none; border: none; font-size: 13px; color: #64748b; font-weight: 700; cursor: pointer; padding: 4px 0; display: inline-flex; align-items: center; gap: 4px;">
+                  ← Back
+                </button>
+                <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Step 2 of 2</span>
+              </div>
+              <h2 class="onboard-step-title">What do you do?</h2>
+              <div class="onboard-role-grid" id="onboardRoleGrid">
+                <div class="onboard-role-card" data-role="Medical Student">
+                  <img src="app/images/onboarding/role_student.jpg" alt="Medical Student" loading="lazy">
+                  <div class="role-overlay"><span class="role-name">Medical Student</span></div>
+                </div>
+                <div class="onboard-role-card" data-role="General Practitioner">
+                  <img src="app/images/onboarding/role_gp.jpg" alt="General Practitioner" loading="lazy">
+                  <div class="role-overlay"><span class="role-name">General Practitioner</span></div>
+                </div>
+                <div class="onboard-role-card" data-role="Resident Doctor">
+                  <img src="app/images/onboarding/role_resident.jpg" alt="Resident Doctor" loading="lazy">
+                  <div class="role-overlay"><span class="role-name">Resident Doctor</span></div>
+                </div>
+                <div class="onboard-role-card selected" data-role="Specialist Doctor">
+                  <img src="app/images/onboarding/role_specialist.jpg" alt="Specialist Doctor" loading="lazy">
+                  <div class="role-overlay"><span class="role-name">Specialist Doctor</span></div>
+                </div>
+                <div class="onboard-role-card" data-role="Healthcare Worker">
+                  <img src="app/images/onboarding/role_healthcare.jpg" alt="Healthcare Worker" loading="lazy">
+                  <div class="role-overlay"><span class="role-name">Healthcare Worker</span></div>
+                </div>
+                <div class="onboard-role-card" data-role="Other">
+                  <img src="app/images/onboarding/role_other.jpg" alt="Other" loading="lazy">
+                  <div class="role-overlay"><span class="role-name">Other</span></div>
+                </div>
+              </div>
+              <button type="button" class="onboard-primary-btn ready" id="onboardStep2Btn">
+                <span>CONTINUE</span>
+                <span>➔</span>
+              </button>
+              <div class="onboard-privacy-footer">
+                Your info stays private • You can change it later
+              </div>
+            </div>
+
+
+            <!-- STEP 4: Just For You 88% Discount Sheet (Image 3) -->
+            <div class="onboard-step-panel" id="onboardStep4" style="display: none;">
+              <div class="offer-header-row">
+                <h2 class="onboard-step-title" style="margin: 0;">Just for you.</h2>
+                <button type="button" class="offer-close-btn" id="onboardOfferCloseBtn" aria-label="Close offer">✕</button>
+              </div>
+
+              <div class="offer-discount-card">
+                <span class="offer-badge-red">-%88 ANNUAL PREMIUM</span>
+                <div class="offer-price-row">
+                  <div class="offer-deal-price">₹2,999.00 <span style="font-size: 15px; font-weight: 600; color: #64748b;">/year</span></div>
+                  <div class="offer-original-price">₹25,948.00</div>
+                </div>
+                <div class="offer-savings-row">
+                  <span>🦷</span>
+                  <span>₹22,949.00 stays in your pocket</span>
+                </div>
+              </div>
+
+              <div class="offer-countdown-pill">
+                <span>● THIS PRICE ENDS</span>
+                <span id="offerTimerText">⏱ 00:59:53</span>
+              </div>
+
+              <button type="button" class="offer-claim-btn" id="onboardClaimDiscountBtn">
+                <span>CLAIM DISCOUNT</span>
+                <span>⚡</span>
+              </button>
+
+              <a href="#" class="offer-skip-link" id="onboardSkipOfferBtn">
+                Not now — continue with free access
+              </a>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ===============================================================
+             FULL-SCREEN HIGH-CONVERSION iOS PAYWALL (Image 1)
+             =============================================================== -->
+        <div class="ios-paywall-modal" id="iosPaywallModal" aria-modal="true" role="dialog">
+          <div class="ios-paywall-hero-container">
+            
+            <!-- Top Controls -->
+            <div class="ios-paywall-top-bar">
+              <button type="button" class="ios-paywall-close-btn" id="iosPaywallCloseBtn" aria-label="Close Paywall">✕</button>
+              <button type="button" class="ios-paywall-restore-btn" id="iosPaywallRestoreBtn">Restore</button>
+            </div>
+
+            <!-- Content Area -->
+            <div class="ios-paywall-bottom-area">
+              
+              <!-- Brand Title -->
+              <div class="ios-paywall-brand-block">
+                <div class="ios-paywall-title-row">
+                  <img src="app/images/onboarding/guide_arms_crossed.jpg" alt="Medical Case" class="ios-paywall-app-icon">
+                  <div class="ios-paywall-title-text">
+                    <div class="ios-paywall-main-name">
+                      Medical Case <span class="ios-pro-badge">PRO</span>
+                    </div>
+                    <div class="ios-title-underline"></div>
+                  </div>
+                </div>
+                
+                <!-- Benefit Checklist -->
+                <div class="ios-paywall-benefits-list">
+                  <div class="ios-benefit-item">
+                    <span class="ios-check-circle">✓</span>
+                    <span>Unlimited case solving access</span>
+                  </div>
+                  <div class="ios-benefit-item">
+                    <span class="ios-check-circle">✓</span>
+                    <span>Access to all case levels</span>
+                  </div>
+                  <div class="ios-benefit-item">
+                    <span class="ios-check-circle">✓</span>
+                    <span>Compete and rank on leaderboard</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Social Proof Banner -->
+              <div class="ios-social-proof-wrap">
+                <div class="ios-social-proof-pill">
+                  <span>● 2959 people bought today</span>
+                </div>
+              </div>
+
+              <!-- 3 Pricing Cards Row -->
+              <div class="ios-pricing-cards-row" id="iosPricingCardsRow">
+                
+                <!-- WEEKLY -->
+                <div class="ios-pricing-card" data-plan="weekly" id="planCardWeekly">
+                  <div class="ios-plan-tier-name">WEEKLY</div>
+                  <div class="ios-plan-main-price">₹ 499</div>
+                  <div class="ios-plan-period-text">/ week</div>
+                  <div class="ios-plan-divider"></div>
+                  <div class="ios-plan-rate-equiv">₹499.00 / week</div>
+                  <div class="ios-plan-feature-tag">Quick try</div>
+                </div>
+
+                <!-- MONTHLY (SELECTED HERO) -->
+                <div class="ios-pricing-card selected" data-plan="monthly" id="planCardMonthly">
+                  <span class="ios-save-badge">SAVE 50%</span>
+                  <div class="ios-plan-tier-name">MONTHLY</div>
+                  <div class="ios-plan-main-price">₹ 999</div>
+                  <div class="ios-plan-period-text">/ month</div>
+                  <div class="ios-plan-divider"></div>
+                  <div class="ios-plan-rate-equiv">₹249.75 / week</div>
+                  <div class="ios-plan-feature-tag">Flexible</div>
+                </div>
+
+                <!-- YEARLY -->
+                <div class="ios-pricing-card" data-plan="annual" id="planCardYearly">
+                  <span class="ios-save-badge">SAVE 71%</span>
+                  <div class="ios-plan-tier-name">YEARLY</div>
+                  <div class="ios-plan-main-price">₹ 3,499</div>
+                  <div class="ios-plan-period-text">/ year</div>
+                  <div class="ios-plan-divider"></div>
+                  <div class="ios-plan-rate-equiv">₹67.29 / week</div>
+                  <div class="ios-plan-feature-tag">Best value</div>
+                </div>
+
+              </div>
+
+              <!-- Primary Action Button -->
+              <button type="button" class="ios-upgrade-cta-btn" id="iosUpgradeCtaBtn">
+                <span>UPGRADE TO PREMIUM</span>
+                <span class="ios-arrow-circle">➔</span>
+              </button>
+
+              <!-- Footer Store Policy & Legal Links -->
+              <div class="ios-paywall-footer">
+                <div class="ios-store-cancel-note" id="iosStorePolicyText">
+                  <span> Cancel Anytime, Auto Renewable</span>
+                </div>
+                <div class="ios-legal-links">
+                  <a href="#terms" id="iosTermsLink">Terms</a> • <a href="#privacy" id="iosPrivacyLink">Privacy</a>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
         <!-- FULL-SCREEN AUTHENTICATION & ONBOARDING GATEKEEPER (STORE COMPLIANT) -->
-        <div class="auth-gatekeeper-overlay" id="authGatekeeperOverlay">
+        <div class="auth-gatekeeper-overlay" id="authGatekeeperOverlay" style="display: none;">
           <div class="auth-gatekeeper-card" id="gkMainAuthCard">
             <div class="auth-brand-badge">
               <div class="auth-brand-icon">
@@ -67,9 +326,9 @@
                   <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                 </svg>
               </div>
-              <h2 class="auth-brand-title">Critical Care Suite</h2>
+              <h2 class="auth-brand-title" id="gkCardMainTitle">Critical Care Suite</h2>
             </div>
-            <p class="auth-tagline">Bedside Clinical Decision Algorithms &amp; ICU Simulators</p>
+            <p class="auth-tagline" id="gkCardSubTitle">Bedside Clinical Decision Algorithms &amp; ICU Simulators</p>
 
             <!-- Google Cloud Authentication -->
             <button type="button" class="btn-google-auth" id="gkGoogleAuthBtn">
@@ -79,38 +338,53 @@
                 <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15Z"/>
                 <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"/>
               </svg>
-              <span>Continue with Google</span>
+              <span id="gkGoogleBtnText">Continue with Google</span>
             </button>
 
             <div class="auth-divider">
-              <span>or continue with email</span>
+              <span id="gkDividerText">or continue with email</span>
             </div>
 
-            <!-- Segmented Mode Switcher: Setup vs Login -->
-            <div class="auth-tabs-segmented">
-              <button type="button" class="auth-tab-choice active" id="gkTabRegister">Initial Account Setup</button>
-              <button type="button" class="auth-tab-choice" id="gkTabLogin">Sign In</button>
+            <!-- Segmented Mode Switcher (Hidden to present dedicated Log In or Sign Up screen without tab confusion) -->
+            <div class="auth-tabs-segmented" style="display: none;">
+              <button type="button" class="auth-tab-choice active" id="gkTabLogin">Sign In</button>
+              <button type="button" class="auth-tab-choice" id="gkTabRegister">Create Account</button>
+            </div>
+
+            <!-- Saved Clinical Identity Banner (when user already completed onboarding steps 1 & 2) -->
+            <div id="gkExistingProfileBanner" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; align-items: center; gap: 10px;">
+              <span style="font-size: 20px;">👨‍⚕️</span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 10.5px; text-transform: uppercase; color: #15803d; font-weight: 800; letter-spacing: 0.5px;">Saved Clinical Identity</div>
+                <div id="gkProfilePillText" style="font-size: 13.5px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dr. Physician (Specialist Doctor)</div>
+              </div>
             </div>
 
             <form id="gatekeeperAuthForm" novalidate>
-              <!-- Professional Medical Role Picker (Reference Image 2) -->
-              <div id="gkRoleGroup">
-                <label class="auth-form-label">Professional Medical Role</label>
-                <select class="auth-form-input" id="gkRoleSelect" required>
-                  <option value="Doctor" selected>Doctor</option>
-                  <option value="Physician Assistant">Physician Assistant</option>
-                  <option value="Nurse/NP">Nurse/NP</option>
-                  <option value="Pharmacist">Pharmacist</option>
-                  <option value="Microbiologist">Microbiologist</option>
-                  <option value="Infection Preventionist">Infection Preventionist</option>
-                  <option value="Student">Student</option>
-                  <option value="Other">Other</option>
-                </select>
+              <div id="gkSignUpSubtitleNote" style="display: none; font-size: 12px; color: #64748b; margin-bottom: 12px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 8px 12px;">
+                💡 Name &amp; profession pre-filled from your choices. You can edit them below if needed.
               </div>
 
-              <div id="gkNameGroup">
+              <!-- Full Practitioner / Physician Name -->
+              <div id="gkNameGroup" style="display: none;">
                 <label class="auth-form-label">Full Name</label>
                 <input type="text" id="gkFullNameInput" class="auth-form-input" placeholder="e.g. Dr. Rajesh Sharma" required autocomplete="name">
+              </div>
+
+              <!-- Professional Medical Role Picker -->
+              <div id="gkRoleGroup" style="display: none;">
+                <label class="auth-form-label">Professional Medical Role</label>
+                <select class="auth-form-input" id="gkRoleSelect" required>
+                  <option value="Specialist Doctor" selected>Specialist Doctor</option>
+                  <option value="Resident Doctor">Resident Doctor</option>
+                  <option value="General Practitioner">General Practitioner</option>
+                  <option value="Medical Student">Medical Student</option>
+                  <option value="Healthcare Worker">Healthcare Worker</option>
+                  <option value="Physician Assistant">Physician Assistant</option>
+                  <option value="Nurse/NP">Nurse / Nurse Practitioner</option>
+                  <option value="Pharmacist">Clinical Pharmacist</option>
+                  <option value="Other">Other Healthcare Practitioner</option>
+                </select>
               </div>
 
               <div>
@@ -121,7 +395,7 @@
               <div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                   <label class="auth-form-label">Password</label>
-                  <a href="#" id="gkForgotPasswordLink" style="font-size: 11px; color: #38bdf8; text-decoration: none; display: none;">Forgot password?</a>
+                  <a href="#" id="gkForgotPasswordLink" style="font-size: 11px; color: #38bdf8; text-decoration: none;">Forgot password?</a>
                 </div>
                 <div style="position: relative; display: flex; align-items: center;">
                   <input type="password" id="gkPasswordInput" class="auth-form-input" placeholder="Minimum 8 characters" required minlength="8" autocomplete="current-password" style="padding-right: 44px; width: 100%;">
@@ -139,7 +413,7 @@
                 <div id="passwordHelpText" style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Must contain at least 8 characters.</div>
               </div>
 
-              <div id="gkInstitutionGroup">
+              <div id="gkInstitutionGroup" style="display: none;">
                 <label class="auth-form-label">Hospital / Medical Center Affiliation (Optional)</label>
                 <input type="text" id="gkInstitutionInput" class="auth-form-input" placeholder="e.g. Apollo Hospital / AIIMS">
               </div>
@@ -155,9 +429,18 @@
               </div>
 
               <button type="submit" class="auth-submit-btn" id="gkSubmitBtn">
-                Complete Setup &amp; Enter Suite
+                Sign In to Account
               </button>
             </form>
+
+            <div style="text-align: center; margin-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+              <button type="button" id="gkSwitchAuthModeBtn" style="background: none; border: none; font-size: 13.5px; color: #0284c7; font-weight: 700; cursor: pointer; text-decoration: underline;">
+                Already have an account? Log In
+              </button>
+              <button type="button" id="gkBackToAppBtn" style="background: none; border: none; font-size: 12.5px; color: #64748b; font-weight: 600; cursor: pointer;">
+                ← Back to Onboarding
+              </button>
+            </div>
 
             <div class="auth-legal-footer">
               By continuing, you accept our <a id="openTermsLink">Terms of Service</a> &amp; <a id="openPrivacyLink">Privacy Policy</a>.<br>
@@ -322,6 +605,25 @@
             <!-- TAB 1: SIMULATORS HUB -->
             <section class="tab-content active" data-tab-content="hub" id="tabHub">
               
+              <!-- CLINICAL PRACTITIONER ID BANNER -->
+              <div class="dash-doctor-profile-card" id="hubDoctorProfileCard">
+                <div class="dash-profile-top-row">
+                  <div class="dash-doctor-ident" id="dashDoctorIdentBtn" style="cursor: pointer;" title="Tap to Edit Name & Role">
+                    <div class="dash-avatar-circle" id="dashAvatarBox">
+                      <img src="app/images/onboarding/guide_arms_crossed.jpg" alt="Doctor" id="dashAvatarImg">
+                    </div>
+                    <div class="dash-doctor-meta">
+                      <h4 class="dash-doctor-name" id="dashDoctorName">Dr. Physician</h4>
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="dash-role-badge" id="dashDoctorRole">Specialist Doctor</span>
+                        <span style="font-size: 11px; color: #0284c7; font-weight: 700; background: #e0f2fe; padding: 2px 7px; border-radius: 6px; display: inline-flex; align-items: center; gap: 3px;">✏️ Edit</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" class="dash-subscribe-btn" id="dashSubscribeBtn">Subscribe</button>
+                </div>
+              </div>
+
               <!-- Hero Banner -->
               <div class="hub-hero-banner">
                 <div class="hero-glow-circle"></div>
@@ -732,6 +1034,15 @@
                     <span id="authErrorMessage" style="flex: 1; line-height: 1.4;"></span>
                   </div>
 
+                  <!-- Saved Clinical Identity Banner (when user already completed onboarding steps 1 & 2) -->
+                  <div id="modalExistingProfileBanner" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; align-items: center; gap: 10px;">
+                    <span style="font-size: 20px;">👨‍⚕️</span>
+                    <div style="flex: 1; min-width: 0;">
+                      <div style="font-size: 10.5px; text-transform: uppercase; color: #15803d; font-weight: 800; letter-spacing: 0.5px;">Saved Clinical Identity</div>
+                      <div id="modalProfilePillText" style="font-size: 13.5px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dr. Physician (Specialist Doctor)</div>
+                    </div>
+                  </div>
+
                   <!-- Role Picker matching Reference Image 2 -->
                   <div class="setup-form-group" id="rolePickerGroup">
                     <label>Professional Role</label>
@@ -801,6 +1112,44 @@
                     <span id="profileRoleBadge" class="sanford-plan-badge" style="font-size: 11px; padding: 4px 10px;">Doctor</span>
                     <span id="profileTierBadge" class="sanford-plan-badge" style="background: #dcfce7; color: #15803d; font-size: 11px; padding: 4px 10px;">Free Trial Active</span>
                   </div>
+                </div>
+
+                <!-- EDIT PRACTITIONER PROFILE FORM -->
+                <div class="profile-edit-section" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 14px; margin-bottom: 16px; text-align: left;">
+                  <div style="font-size: 12px; font-weight: 800; color: #0284c7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                    <span>✏️</span> Edit Clinical Identity
+                  </div>
+                  
+                  <form id="profileEditForm" novalidate>
+                    <div style="margin-bottom: 10px;">
+                      <label style="display: block; font-size: 11.5px; font-weight: 700; color: #475569; margin-bottom: 4px;">Full Practitioner Name</label>
+                      <input type="text" id="editProfileNameInput" class="auth-form-input" placeholder="e.g. Dr. Rajesh Sharma" required style="height: 38px; font-size: 13px; background: #ffffff;">
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                      <label style="display: block; font-size: 11.5px; font-weight: 700; color: #475569; margin-bottom: 4px;">Professional Medical Role</label>
+                      <select id="editProfileRoleSelect" class="auth-form-input" required style="height: 38px; font-size: 13px; background: #ffffff;">
+                        <option value="Specialist Doctor">Specialist Doctor</option>
+                        <option value="Resident Doctor">Resident Doctor</option>
+                        <option value="General Practitioner">General Practitioner</option>
+                        <option value="Medical Student">Medical Student</option>
+                        <option value="Pharmacist">Clinical Pharmacist</option>
+                        <option value="Healthcare Worker">Healthcare Worker</option>
+                        <option value="Physician Assistant">Physician Assistant</option>
+                        <option value="Nurse/NP">Nurse / Nurse Practitioner</option>
+                        <option value="Other">Other Healthcare Practitioner</option>
+                      </select>
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                      <label style="display: block; font-size: 11.5px; font-weight: 700; color: #475569; margin-bottom: 4px;">Hospital / Institutional Affiliation (Optional)</label>
+                      <input type="text" id="editProfileInstInput" class="auth-form-input" placeholder="e.g. Apollo Hospital / AIIMS" style="height: 38px; font-size: 13px; background: #ffffff;">
+                    </div>
+
+                    <button type="submit" id="saveProfileChangesBtn" class="auth-submit-btn" style="height: 40px; font-size: 13px; font-weight: 800; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-radius: 8px; width: 100%;">
+                      💾 Save Profile Changes
+                    </button>
+                  </form>
                 </div>
 
                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 16px;">
@@ -1117,16 +1466,17 @@
       }
 
       saveUser(userData) {
-        this.currentUser = { ...this.currentUser, ...userData, isLoggedIn: true };
+        const isLogged = userData && ('isLoggedIn' in userData) ? userData.isLoggedIn : true;
+        this.currentUser = { ...this.currentUser, ...userData, isLoggedIn: isLogged };
         try {
           localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(this.currentUser));
         } catch (e) {}
         if (this.currentUser && this.currentUser.isLoggedIn) {
           document.documentElement.classList.add('is-authenticated-user');
+          if (window.appInstance) window.appInstance.updateUserUI();
         } else {
           document.documentElement.classList.remove('is-authenticated-user');
         }
-        if (window.appInstance) window.appInstance.updateUserUI();
       }
 
       async signOut() {
@@ -1409,6 +1759,8 @@
         this.renderFavoritesView();
         this.renderProFeaturesList();
         this.bindEvents();
+        this.initIosOnboarding();
+        this.initIosPaywall();
         this.updateUserUI();
         this.updateSanfordPaywallUI();
         this.updateSubscriptionUI();
@@ -1509,14 +1861,16 @@
       }
 
       checkDisclaimer() {
+        const user = this.userManager ? this.userManager.currentUser : null;
+        // Never show disclaimer modal over onboarding overlay or auth gatekeeper!
+        if (!user || !user.isLoggedIn) return;
+
         try {
           const accepted = localStorage.getItem(DISCLAIMER_STORAGE_KEY) === 'true';
           if (!accepted) {
             this.showDisclaimerModal();
           }
-        } catch (e) {
-          this.showDisclaimerModal();
-        }
+        } catch (e) {}
       }
 
       showDisclaimerModal() {
@@ -1530,24 +1884,525 @@
       }
 
       showPaywallModal(sim = null) {
-        const modal = document.getElementById('paywallModal');
-        const triggerTitle = document.getElementById('paywallTriggerTitle');
-        if (triggerTitle && sim) {
-          triggerTitle.textContent = `Unlock "${sim.title}" & all 13 clinical simulation engines.`;
-        } else if (triggerTitle) {
-          triggerTitle.textContent = 'Unlock unrestricted access to all 13 critical care simulation engines.';
-        }
-        if (modal) modal.classList.add('show');
+        this.showIosPaywallModal(sim);
       }
 
       hidePaywallModal() {
-        const modal = document.getElementById('paywallModal');
-        if (modal) modal.classList.remove('show');
+        this.hideIosPaywallModal();
+      }
+
+      showIosPaywallModal(sim = null) {
+        const modal = document.getElementById('iosPaywallModal');
+        if (modal) {
+          modal.classList.add('active');
+        } else {
+          const fallback = document.getElementById('paywallModal');
+          if (fallback) fallback.classList.add('show');
+        }
+      }
+
+      hideIosPaywallModal() {
+        const modal = document.getElementById('iosPaywallModal');
+        if (modal) modal.classList.remove('active');
+        const fallback = document.getElementById('paywallModal');
+        if (fallback) fallback.classList.remove('show');
+      }
+
+      openGatekeeperSignUp(prefillName = '', prefillRole = '') {
+        const overlay = document.getElementById('iosOnboardingOverlay');
+        if (overlay) overlay.classList.remove('active');
+
+        const gk = document.getElementById('authGatekeeperOverlay');
+        const mainCard = document.getElementById('gkMainAuthCard');
+        if (gk) {
+          gk.style.display = 'flex';
+          gk.classList.remove('authenticated-hidden');
+        }
+        if (mainCard) mainCard.style.display = 'block';
+
+        // Keep segmented tab bar hidden so only the dedicated Sign Up screen shows
+        const gkSegmented = document.querySelector('.auth-tabs-segmented');
+        if (gkSegmented) gkSegmented.style.display = 'none';
+
+        const gkTabReg = document.getElementById('gkTabRegister');
+        const gkTabLog = document.getElementById('gkTabLogin');
+        if (gkTabReg) gkTabReg.classList.add('active');
+        if (gkTabLog) gkTabLog.classList.remove('active');
+
+        // Dynamic dedicated Sign Up titles
+        const titleEl = document.getElementById('gkCardMainTitle');
+        const subTitleEl = document.getElementById('gkCardSubTitle');
+        const googleText = document.getElementById('gkGoogleBtnText');
+        const dividerText = document.getElementById('gkDividerText');
+        if (titleEl) titleEl.textContent = 'Create Your Account';
+        if (subTitleEl) subTitleEl.textContent = 'Save your clinical simulation progress & certificates';
+        if (googleText) googleText.textContent = 'Sign up with Google';
+        if (dividerText) dividerText.textContent = 'or sign up with institutional email';
+
+        // Show Name and Profession inputs, pre-filled and fully editable
+        const gkNameGroup = document.getElementById('gkNameGroup');
+        const gkRoleGroup = document.getElementById('gkRoleGroup');
+        const gkInstGroup = document.getElementById('gkInstitutionGroup');
+        if (gkNameGroup) gkNameGroup.style.display = 'block';
+        if (gkRoleGroup) gkRoleGroup.style.display = 'block';
+        if (gkInstGroup) gkInstGroup.style.display = 'block';
+
+        const nameInput = document.getElementById('gkFullNameInput');
+        if (nameInput) {
+          const user = this.userManager ? this.userManager.currentUser : null;
+          const nameToSet = prefillName || (user && user.name) || '';
+          if (nameToSet && nameToSet !== 'Guest' && nameToSet !== 'Doctor') {
+            nameInput.value = nameToSet;
+          }
+        }
+
+        const roleSelect = document.getElementById('gkRoleSelect');
+        if (roleSelect) {
+          const user = this.userManager ? this.userManager.currentUser : null;
+          const roleToSet = prefillRole || (user && user.role) || '';
+          if (roleToSet) {
+            for (let i = 0; i < roleSelect.options.length; i++) {
+              if (roleSelect.options[i].value.toLowerCase() === roleToSet.toLowerCase()) {
+                roleSelect.selectedIndex = i;
+                break;
+              }
+            }
+          }
+        }
+
+        const subtitleNote = document.getElementById('gkSignUpSubtitleNote');
+        if (subtitleNote) subtitleNote.style.display = 'block';
+
+        const submitBtn = document.getElementById('gkSubmitBtn');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create Account & Continue ➔';
+        }
+
+        const forgotLink = document.getElementById('gkForgotPasswordLink');
+        if (forgotLink) forgotLink.style.display = 'none';
+
+        const switchModeBtn = document.getElementById('gkSwitchAuthModeBtn');
+        if (switchModeBtn) {
+          switchModeBtn.textContent = 'Already have an account? Log In';
+          switchModeBtn.onclick = () => this.openGatekeeperLogin();
+        }
+
+        const gkBackBtn = document.getElementById('gkBackToAppBtn');
+        if (gkBackBtn) gkBackBtn.textContent = '← Back to Onboarding';
+      }
+
+      openGatekeeperLogin() {
+        const overlay = document.getElementById('iosOnboardingOverlay');
+        if (overlay) overlay.classList.remove('active');
+
+        const gk = document.getElementById('authGatekeeperOverlay');
+        const mainCard = document.getElementById('gkMainAuthCard');
+        if (gk) {
+          gk.style.display = 'flex';
+          gk.classList.remove('authenticated-hidden');
+        }
+        if (mainCard) mainCard.style.display = 'block';
+
+        // Keep segmented tab bar hidden so only the dedicated Log In screen shows
+        const gkSegmented = document.querySelector('.auth-tabs-segmented');
+        if (gkSegmented) gkSegmented.style.display = 'none';
+
+        const gkTabLog = document.getElementById('gkTabLogin');
+        const gkTabReg = document.getElementById('gkTabRegister');
+        if (gkTabLog) gkTabLog.classList.add('active');
+        if (gkTabReg) gkTabReg.classList.remove('active');
+
+        // Dynamic dedicated Log In titles
+        const titleEl = document.getElementById('gkCardMainTitle');
+        const subTitleEl = document.getElementById('gkCardSubTitle');
+        const googleText = document.getElementById('gkGoogleBtnText');
+        const dividerText = document.getElementById('gkDividerText');
+        if (titleEl) titleEl.textContent = 'Log In to Account';
+        if (subTitleEl) subTitleEl.textContent = 'Bedside Clinical Decision Algorithms & ICU Simulators';
+        if (googleText) googleText.textContent = 'Continue with Google';
+        if (dividerText) dividerText.textContent = 'or continue with email';
+
+        // Hide Name and Role inputs for returning users
+        const gkNameGroup = document.getElementById('gkNameGroup');
+        const gkRoleGroup = document.getElementById('gkRoleGroup');
+        const gkInstGroup = document.getElementById('gkInstitutionGroup');
+        if (gkNameGroup) gkNameGroup.style.display = 'none';
+        if (gkRoleGroup) gkRoleGroup.style.display = 'none';
+        if (gkInstGroup) gkInstGroup.style.display = 'none';
+
+        const subtitleNote = document.getElementById('gkSignUpSubtitleNote');
+        if (subtitleNote) subtitleNote.style.display = 'none';
+
+        const forgotLink = document.getElementById('gkForgotPasswordLink');
+        if (forgotLink) forgotLink.style.display = 'inline';
+
+        const submitBtn = document.getElementById('gkSubmitBtn');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign In to Account';
+        }
+
+        const switchModeBtn = document.getElementById('gkSwitchAuthModeBtn');
+        if (switchModeBtn) {
+          switchModeBtn.textContent = 'New practitioner? Create Account';
+          switchModeBtn.onclick = () => this.openGatekeeperSignUp();
+        }
+
+        const gkBackBtn = document.getElementById('gkBackToAppBtn');
+        if (gkBackBtn) gkBackBtn.textContent = '← Back to Onboarding';
+      }
+
+      showOnboardingOfferSheet(userName) {
+        const iosOverlay = document.getElementById('iosOnboardingOverlay');
+        const guideAvatar = document.getElementById('onboardGuideAvatar');
+        const speechBubble = document.getElementById('onboardSpeechBubble');
+        const step1 = document.getElementById('onboardStep1');
+        const step2 = document.getElementById('onboardStep2');
+        const step3 = document.getElementById('onboardStep3');
+        const step4 = document.getElementById('onboardStep4');
+        const dash1 = document.getElementById('onboardDash1');
+        const dash2 = document.getElementById('onboardDash2');
+        const dash3 = document.getElementById('onboardDash3');
+        const dash4 = document.getElementById('onboardDash4');
+
+        if (guideAvatar) guideAvatar.src = 'app/images/onboarding/guide_giggling.jpg';
+        const cleanName = (userName || 'Physician').toLowerCase().startsWith('dr') ? userName : `Dr. ${userName}`;
+        if (speechBubble) {
+          speechBubble.innerHTML = `I pulled some strings for you, ${cleanName}!<br>They dropped the price by 88% — good for one hour only.`;
+        }
+        if (step1) step1.style.display = 'none';
+        if (step2) step2.style.display = 'none';
+        if (step3) step3.style.display = 'none';
+        if (step4) step4.style.display = 'block';
+        if (dash1) dash1.classList.add('active');
+        if (dash2) dash2.classList.add('active');
+        if (dash3) dash3.classList.add('active');
+        if (dash4) dash4.classList.add('active');
+
+        // Close Gatekeeper and display offer sheet
+        const gk = document.getElementById('authGatekeeperOverlay');
+        if (gk) {
+          gk.style.display = 'none';
+          gk.classList.add('authenticated-hidden');
+        }
+        if (iosOverlay) iosOverlay.classList.add('active');
+
+        // Start ticking timer: 00:59:53
+        let offerSecondsLeft = 3593;
+        const timerEl = document.getElementById('offerTimerText');
+        if (this._offerTimer) clearInterval(this._offerTimer);
+        this._offerTimer = setInterval(() => {
+          offerSecondsLeft--;
+          if (offerSecondsLeft <= 0) {
+            clearInterval(this._offerTimer);
+            if (timerEl) timerEl.textContent = '⏱ 00:00:00';
+            return;
+          }
+          const h = Math.floor(offerSecondsLeft / 3600);
+          const m = Math.floor((offerSecondsLeft % 3600) / 60);
+          const s = offerSecondsLeft % 60;
+          const fH = String(h).padStart(2, '0');
+          const fM = String(m).padStart(2, '0');
+          const fS = String(s).padStart(2, '0');
+          if (timerEl) timerEl.textContent = `⏱ ${fH}:${fM}:${fS}`;
+        }, 1000);
+      }
+
+      initIosOnboarding() {
+        const overlay = document.getElementById('iosOnboardingOverlay');
+        const guideAvatar = document.getElementById('onboardGuideAvatar');
+        const speechBubble = document.getElementById('onboardSpeechBubble');
+        
+        const step1 = document.getElementById('onboardStep1');
+        const step2 = document.getElementById('onboardStep2');
+        const step4 = document.getElementById('onboardStep4');
+
+        const dash1 = document.getElementById('onboardDash1');
+        const dash2 = document.getElementById('onboardDash2');
+
+        const nameInput = document.getElementById('onboardNameInput');
+        const step1Btn = document.getElementById('onboardStep1Btn');
+        const step2Btn = document.getElementById('onboardStep2Btn');
+        const claimDiscountBtn = document.getElementById('onboardClaimDiscountBtn');
+        const skipOfferBtn = document.getElementById('onboardSkipOfferBtn');
+        const offerCloseBtn = document.getElementById('onboardOfferCloseBtn');
+        const switchToLoginBtn = document.getElementById('onboardSwitchToLoginBtn');
+
+        let onboardName = '';
+        let onboardRole = 'Specialist Doctor';
+        let offerTimer = null;
+        let offerSecondsLeft = 3593; // 00:59:53
+
+        // Step 1: What's your name?
+        if (step1Btn && nameInput) {
+          const advanceStep1 = () => {
+            const raw = (nameInput.value || '').trim();
+            onboardName = raw || 'Physician';
+            const cleanDisplay = onboardName.toLowerCase().startsWith('dr') ? onboardName : `Dr. ${onboardName}`;
+            
+            // Save draft identity so Gatekeeper & Auth modal reuse it without asking again
+            this.userManager.saveUser({
+              name: cleanDisplay,
+              role: onboardRole,
+              institution: '',
+              isLoggedIn: false,
+              isProfileComplete: true
+            });
+
+            // Advance to Step 2
+            if (guideAvatar) guideAvatar.src = 'app/images/onboarding/guide_thinking.jpg';
+            if (speechBubble) {
+              speechBubble.innerHTML = `Nice to meet you, ${cleanDisplay}.<br>Student, doctor or healthcare worker — which one are you?`;
+            }
+            if (dash2) dash2.classList.add('active');
+            if (step1) step1.style.display = 'none';
+            if (step2) step2.style.display = 'block';
+          };
+
+          step1Btn.addEventListener('click', advanceStep1);
+          nameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              advanceStep1();
+            }
+          });
+        }
+
+        // Back button: Step 2 -> Step 1
+        const backToStep1Btn = document.getElementById('onboardBackToStep1Btn');
+        if (backToStep1Btn) {
+          backToStep1Btn.addEventListener('click', () => {
+            if (guideAvatar) guideAvatar.src = 'app/images/onboarding/guide_arms_crossed.jpg';
+            if (speechBubble) {
+              speechBubble.innerHTML = `Hey, welcome aboard!<br>I'd love to know — what's your name?`;
+            }
+            if (dash2) dash2.classList.remove('active');
+            if (step2) step2.style.display = 'none';
+            if (step1) step1.style.display = 'block';
+            if (nameInput) nameInput.focus();
+          });
+        }
+
+        // Step 2: What do you do? (Role Picker)
+        const roleCards = document.querySelectorAll('.onboard-role-card');
+        roleCards.forEach(card => {
+          card.addEventListener('click', () => {
+            roleCards.forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            onboardRole = card.getAttribute('data-role') || 'Specialist Doctor';
+          });
+        });
+
+        // Step 2: Continue -> DIRECTLY into Account Creation (Sign Up) with pre-filled name & role (NO review / rating step!)
+        if (step2Btn) {
+          step2Btn.addEventListener('click', () => {
+            const cleanDisplay = onboardName.toLowerCase().startsWith('dr') ? onboardName : `Dr. ${onboardName}`;
+            
+            // Save draft identity in UserManager so Gatekeeper pre-fills Name and Role
+            this.userManager.saveUser({
+              name: cleanDisplay,
+              role: onboardRole,
+              institution: '',
+              isLoggedIn: false,
+              isProfileComplete: true
+            });
+
+            // Advance directly to dedicated Account Creation (Sign Up) screen
+            this.openGatekeeperSignUp(cleanDisplay, onboardRole);
+          });
+        }
+
+        // Helper to close 88% flash offer and enter Hub
+        const closeOfferAndEnterHub = (isDiscountClaimed = false) => {
+          if (offerTimer) clearInterval(offerTimer);
+          if (this._offerTimer) clearInterval(this._offerTimer);
+          if (overlay) overlay.classList.remove('active');
+          try {
+            localStorage.setItem(DISCLAIMER_STORAGE_KEY, 'true');
+          } catch(e) {}
+
+          const current = this.userManager.currentUser;
+          const finalName = (current && current.name) || (onboardName ? (onboardName.toLowerCase().startsWith('dr') ? onboardName : `Dr. ${onboardName}`) : 'Doctor');
+
+          if (isDiscountClaimed) {
+            this.subManager.activatePro('discount');
+            this.showToast(`🎉 Welcome ${finalName}! 88% Discount Pro Pass Activated.`, 'success');
+          } else {
+            this.showToast(`Welcome to Critical Care Suite, ${finalName}! Free access active.`, 'info');
+          }
+          this.updateUserUI();
+          this.updateSubscriptionUI();
+        };
+
+        if (claimDiscountBtn) {
+          claimDiscountBtn.addEventListener('click', () => closeOfferAndEnterHub(true));
+        }
+
+        if (skipOfferBtn) {
+          skipOfferBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeOfferAndEnterHub(false);
+          });
+        }
+
+        if (offerCloseBtn) {
+          offerCloseBtn.addEventListener('click', () => closeOfferAndEnterHub(false));
+        }
+
+        const topSignInBtn = document.getElementById('onboardTopSignInBtn');
+        if (topSignInBtn) {
+          topSignInBtn.addEventListener('click', () => this.openGatekeeperLogin());
+        }
+
+        if (switchToLoginBtn) {
+          switchToLoginBtn.addEventListener('click', () => this.openGatekeeperLogin());
+        }
+      }
+
+      initIosPaywall() {
+        const modal = document.getElementById('iosPaywallModal');
+        const closeBtn = document.getElementById('iosPaywallCloseBtn');
+        const restoreBtn = document.getElementById('iosPaywallRestoreBtn');
+        const upgradeBtn = document.getElementById('iosUpgradeCtaBtn');
+        const planCards = document.querySelectorAll('.ios-pricing-card');
+        const storePolicyText = document.getElementById('iosStorePolicyText');
+
+        // Platform detection for store text (StoreKit vs Google Play)
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || 
+                      (navigator.platform && /Mac/i.test(navigator.platform));
+        if (storePolicyText) {
+          if (isIOS) {
+            storePolicyText.innerHTML = `<span> Cancel Anytime, Auto Renewable</span>`;
+          } else {
+            storePolicyText.innerHTML = `<span><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -2px; margin-right: 4px;"><path d="M3.609 1.814L13.792 12 3.61 22.186a2.006 2.006 0 0 1-.22-.916V2.73c0-.335.08-.65.22-.916zM15.207 13.414l2.428-2.428-11.45-6.61 9.022 9.038zm0-2.828L6.185 1.548l11.45 6.61-2.428 2.428zm1.414 1.414l3.182 1.838a1.2 1.2 0 0 0 1.197 0 1.18 1.18 0 0 0 0-2.076L16.62 9.924l-1.414 1.414 1.415 1.416z"/></svg>Google Play • Cancel Anytime</span>`;
+          }
+        }
+
+        // Plan Selection
+        planCards.forEach(card => {
+          card.addEventListener('click', () => {
+            planCards.forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            const planKey = card.getAttribute('data-plan') || 'monthly';
+            this.subManager.setSelectedPlan(planKey);
+          });
+        });
+
+        // Close Paywall
+        if (closeBtn) {
+          closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.hideIosPaywallModal();
+          });
+        }
+
+        // Restore Purchases (Apple StoreKit & Google Play requirement)
+        if (restoreBtn) {
+          restoreBtn.addEventListener('click', async () => {
+            restoreBtn.textContent = 'Checking...';
+            try {
+              const res = await this.subManager.restorePurchases();
+              this.showToast(res.message || 'Purchase check completed.', res.success ? 'success' : 'info');
+              if (res.success) {
+                this.hideIosPaywallModal();
+              }
+            } catch(e) {
+              this.showToast('Could not reach billing server.', 'warning');
+            } finally {
+              restoreBtn.textContent = 'Restore';
+            }
+          });
+        }
+
+        // Upgrade CTA Button
+        if (upgradeBtn) {
+          upgradeBtn.addEventListener('click', async () => {
+            const originalHTML = upgradeBtn.innerHTML;
+            upgradeBtn.innerHTML = `<span>PROCESSING...</span><span class="ios-arrow-circle">⌛</span>`;
+            upgradeBtn.disabled = true;
+
+            try {
+              const plan = this.subManager.selectedPlan || 'monthly';
+              await this.subManager.simulatePurchase(plan);
+              this.showToast('🎉 Upgrade Successful! Medical Case PRO is now Unlocked.', 'success');
+              this.hideIosPaywallModal();
+              this.updateSubscriptionUI();
+            } catch(e) {
+              this.showToast('Subscription purchase error. Please try again.', 'error');
+            } finally {
+              upgradeBtn.innerHTML = originalHTML;
+              upgradeBtn.disabled = false;
+            }
+          });
+        }
+
+        // Subscribe button on Dashboard Hub
+        const dashSubBtn = document.getElementById('dashSubscribeBtn');
+        if (dashSubBtn) {
+          dashSubBtn.addEventListener('click', () => this.showIosPaywallModal());
+        }
       }
 
       showAuthModal() {
         const modal = document.getElementById('authModal');
-        if (modal) modal.classList.add('show');
+        if (modal) {
+          modal.classList.add('show');
+          // Check for prior onboarding profile so Name/Role are never asked twice
+          const saved = this.userManager.currentUser;
+          const hasPrior = saved && saved.name && saved.name !== 'Guest' && saved.name !== 'Doctor';
+          const modalBanner = document.getElementById('modalExistingProfileBanner');
+          const modalPillText = document.getElementById('modalProfilePillText');
+          const roleGroup = document.getElementById('rolePickerGroup');
+          const nameGroup = document.getElementById('nameFieldGroup');
+          const instGroup = document.getElementById('institutionFieldGroup');
+          const tabReg = document.getElementById('tabModeRegister');
+          const isReg = tabReg && tabReg.classList.contains('active');
+
+          if (hasPrior) {
+            if (modalBanner) modalBanner.style.display = 'flex';
+            if (modalPillText) modalPillText.textContent = `${saved.name} (${saved.role || 'Specialist Doctor'})`;
+            if (roleGroup) roleGroup.style.display = 'none';
+            if (nameGroup) nameGroup.style.display = 'none';
+            if (instGroup) instGroup.style.display = 'none';
+            const setupSubmitBtn = document.getElementById('setupSubmitBtn');
+            if (setupSubmitBtn && isReg) setupSubmitBtn.textContent = 'Save & Create Account';
+          } else {
+            if (modalBanner) modalBanner.style.display = 'none';
+            if (isReg) {
+              if (roleGroup) roleGroup.style.display = 'block';
+              if (nameGroup) nameGroup.style.display = 'block';
+              if (instGroup) instGroup.style.display = 'block';
+            } else {
+              if (roleGroup) roleGroup.style.display = 'none';
+              if (nameGroup) nameGroup.style.display = 'none';
+              if (instGroup) instGroup.style.display = 'none';
+            }
+          }
+
+          // Pre-populate Edit Profile form if user is logged in
+          if (saved && saved.isLoggedIn) {
+            const editNameInput = document.getElementById('editProfileNameInput');
+            const editRoleSelect = document.getElementById('editProfileRoleSelect');
+            const editInstInput = document.getElementById('editProfileInstInput');
+            if (editNameInput) editNameInput.value = saved.name || '';
+            if (editInstInput) editInstInput.value = saved.institution || '';
+            if (editRoleSelect && saved.role) {
+              for (let i = 0; i < editRoleSelect.options.length; i++) {
+                if (editRoleSelect.options[i].value.toLowerCase() === saved.role.toLowerCase()) {
+                  editRoleSelect.selectedIndex = i;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (!saved || !saved.isLoggedIn) {
+            const tabLog = document.getElementById('tabModeLogin');
+            if (tabLog) tabLog.click();
+          }
+        }
       }
 
       hideAuthModal() {
@@ -1564,9 +2419,38 @@
             return true;
           }
 
-          // 2. If any modal is open, dismiss it!
+          // 2. If Auth Gatekeeper is active, return cleanly to Onboarding Step 2
+          const gkOverlay = document.getElementById('authGatekeeperOverlay');
+          if (gkOverlay && gkOverlay.style.display !== 'none' && !gkOverlay.classList.contains('authenticated-hidden')) {
+            const gkBackBtn = document.getElementById('gkBackToAppBtn');
+            if (gkBackBtn) {
+              gkBackBtn.click();
+              return true;
+            }
+          }
+
+          // 2b. If iOS Onboarding Overlay is active, step backwards cleanly
+          const iosOverlay = document.getElementById('iosOnboardingOverlay');
+          if (iosOverlay && iosOverlay.classList.contains('active')) {
+            const step4 = document.getElementById('onboardStep4');
+            const step2 = document.getElementById('onboardStep2');
+            const backToStep1Btn = document.getElementById('onboardBackToStep1Btn');
+
+            if (step4 && step4.style.display !== 'none') {
+              const offerCloseBtn = document.getElementById('onboardOfferCloseBtn');
+              if (offerCloseBtn) offerCloseBtn.click();
+              return true;
+            }
+            if (step2 && step2.style.display !== 'none' && backToStep1Btn) {
+              backToStep1Btn.click();
+              return true;
+            }
+          }
+
+          // 3. If any modal is open, dismiss it!
           const modals = [
             '#authModal',
+            '#iosPaywallModal',
             '#paywallModal',
             '#deleteAccountModal',
             '#legalModal',
@@ -1574,8 +2458,9 @@
           ];
           for (const selector of modals) {
             const el = document.querySelector(selector);
-            if (el && el.classList.contains('show')) {
+            if (el && (el.classList.contains('show') || el.classList.contains('active'))) {
               el.classList.remove('show');
+              el.classList.remove('active');
               return true;
             }
           }
@@ -2182,11 +3067,13 @@
         const profileEmail = document.getElementById('profileEmail');
         const profileRoleBadge = document.getElementById('profileRoleBadge');
         const roleAdminLink = document.getElementById('roleAdminPortalLink');
+        const iosOverlay = document.getElementById('iosOnboardingOverlay');
 
         const canEnterApp = user && user.isLoggedIn;
 
         if (canEnterApp) {
           document.documentElement.classList.add('is-authenticated-user');
+          if (iosOverlay) iosOverlay.classList.remove('active');
           if (gatekeeper) {
             gatekeeper.classList.add('authenticated-hidden');
             gatekeeper.style.display = 'none';
@@ -2197,20 +3084,30 @@
 
           if (loggedOutView) loggedOutView.style.display = 'none';
           if (loggedInView) loggedInView.style.display = 'block';
+          
+          const rawName = user.name || 'Physician';
+          const cleanName = rawName.toLowerCase().startsWith('dr') ? rawName : `Dr. ${rawName}`;
+
           if (headerAuthBtn) {
             headerAuthBtn.innerHTML = `
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              <span>${user.name || 'Dr. Physician'}</span>
+              <span>${cleanName}</span>
             `;
           }
-          if (profileDisplayName) profileDisplayName.textContent = user.name || 'Dr. Physician';
+          if (profileDisplayName) profileDisplayName.textContent = cleanName;
           if (profileEmail) profileEmail.textContent = user.email || 'doctor@hospital.org';
           if (profileRoleBadge) profileRoleBadge.textContent = user.role || 'Doctor';
+
+          // Update Dashboard Hub Doctor Profile Card (Ref Images 2, 3, 4)
+          const dashDocName = document.getElementById('dashDoctorName');
+          const dashDocRole = document.getElementById('dashDoctorRole');
+          if (dashDocName) dashDocName.textContent = cleanName;
+          if (dashDocRole) dashDocRole.textContent = user.role || 'Specialist Doctor';
           
           const infoName = document.getElementById('infoTabUserName');
           const infoEmail = document.getElementById('infoTabUserEmail');
           const infoRole = document.getElementById('infoTabRoleBadge');
-          if (infoName) infoName.textContent = user.name || 'Doctor';
+          if (infoName) infoName.textContent = cleanName;
           if (infoEmail) infoEmail.textContent = user.email || 'doctor@hospital.org';
           if (infoRole) infoRole.textContent = user.role || 'Doctor';
 
@@ -2219,9 +3116,12 @@
           }
         } else {
           document.documentElement.classList.remove('is-authenticated-user');
+          if (iosOverlay) {
+            iosOverlay.classList.add('active');
+          }
           if (gatekeeper) {
-            gatekeeper.classList.remove('authenticated-hidden');
-            gatekeeper.style.display = 'flex';
+            gatekeeper.classList.add('authenticated-hidden');
+            gatekeeper.style.display = 'none';
           }
           if (mainGkCard) mainGkCard.style.display = 'block';
           if (verifCard) verifCard.style.display = 'none';
@@ -2366,7 +3266,9 @@
       }
 
       initFirebaseListeners() {
-        // Debounced refresh to prevent rapid-fire re-renders from multiple events
+        let isInitialStartup = true;
+        setTimeout(() => { isInitialStartup = false; }, 4000);
+
         let refreshTimer = null;
         const refreshSimulatorsCatalog = (source) => {
           console.log(`[HUB SYNC] Catalog refresh triggered by: ${source}`);
@@ -2377,7 +3279,7 @@
             this.renderCategoryChips();
             this.renderSimulatorsHub();
             this.renderFavoritesView();
-            this.showToast('🛡️ Simulator Catalog Updated by Owner', 'info');
+            if (!isInitialStartup) this.showToast('🛡️ Simulator Catalog Updated by Owner', 'info');
           }, 150);
         };
         this._debouncedRefreshCatalog = () => refreshSimulatorsCatalog('BroadcastChannel');
@@ -2431,7 +3333,7 @@
             this.subManager.saveSettings(settings);
             this.updateSanfordPaywallUI();
             this.updateSubscriptionUI();
-            this.showToast('🔔 Live Subscription Pricing Synced from Cloud', 'info');
+            if (!isInitialStartup) this.showToast('🔔 Live Subscription Pricing Synced from Cloud', 'info');
           }
         });
 
@@ -2441,7 +3343,7 @@
             this.simulators = this.loadActiveSimulators();
             this.renderSimulatorsHub();
             this.renderFavoritesView();
-            this.showToast('🛡️ Simulator Access Tiers Synced from Cloud', 'info');
+            if (!isInitialStartup) this.showToast('🛡️ Simulator Access Tiers Synced from Cloud', 'info');
           }
         });
 
@@ -2615,13 +3517,27 @@
         // Header Profile / Sign In Button Click
         const headerAuthBtn = document.getElementById('headerAuthBtn');
         if (headerAuthBtn) {
-          headerAuthBtn.addEventListener('click', () => this.showAuthModal());
+          headerAuthBtn.addEventListener('click', () => {
+            const user = this.userManager.currentUser;
+            if (user && user.isLoggedIn) {
+              this.showAuthModal();
+            } else {
+              this.openGatekeeperLogin();
+            }
+          });
         }
 
         // Info Tab Profile Management Button Click
         const openProfileFromInfoBtn = document.getElementById('openProfileFromInfoBtn');
         if (openProfileFromInfoBtn) {
-          openProfileFromInfoBtn.addEventListener('click', () => this.showAuthModal());
+          openProfileFromInfoBtn.addEventListener('click', () => {
+            const user = this.userManager.currentUser;
+            if (user && user.isLoggedIn) {
+              this.showAuthModal();
+            } else {
+              this.openGatekeeperLogin();
+            }
+          });
         }
 
         // Auth Modal Close Button Click
@@ -2650,22 +3566,43 @@
 
         // Mode switchers inside Auth Modal (Header Profile Screen)
         if (tabModeReg && tabModeLog) {
-          const nameInput = document.getElementById('setupFullNameInput');
           tabModeReg.addEventListener('click', () => {
             tabModeReg.classList.add('active');
             tabModeLog.classList.remove('active');
-            if (rolePickerGroup) rolePickerGroup.style.display = 'block';
-            if (nameFieldGroup) nameFieldGroup.style.display = 'block';
-            if (instFieldGroup) instFieldGroup.style.display = 'block';
-            if (setupSubmitBtn) {
-              setupSubmitBtn.disabled = false;
-              setupSubmitBtn.textContent = 'Complete Setup & Start';
+
+            const savedProfile = this.userManager.currentUser;
+            const hasPrior = savedProfile && savedProfile.name && savedProfile.name !== 'Guest' && savedProfile.name !== 'Doctor';
+            const modalBanner = document.getElementById('modalExistingProfileBanner');
+            const modalPillText = document.getElementById('modalProfilePillText');
+
+            if (hasPrior) {
+              if (modalBanner) modalBanner.style.display = 'flex';
+              if (modalPillText) modalPillText.textContent = `${savedProfile.name} (${savedProfile.role || 'Specialist Doctor'})`;
+              if (rolePickerGroup) rolePickerGroup.style.display = 'none';
+              if (nameFieldGroup) nameFieldGroup.style.display = 'none';
+              if (instFieldGroup) instFieldGroup.style.display = 'none';
+              if (setupSubmitBtn) {
+                setupSubmitBtn.disabled = false;
+                setupSubmitBtn.textContent = 'Save & Create Account';
+              }
+            } else {
+              if (modalBanner) modalBanner.style.display = 'none';
+              if (rolePickerGroup) rolePickerGroup.style.display = 'block';
+              if (nameFieldGroup) nameFieldGroup.style.display = 'block';
+              if (instFieldGroup) instFieldGroup.style.display = 'block';
+              if (setupSubmitBtn) {
+                setupSubmitBtn.disabled = false;
+                setupSubmitBtn.textContent = 'Complete Setup & Start';
+              }
             }
             clearAuthError();
           });
+
           tabModeLog.addEventListener('click', () => {
             tabModeLog.classList.add('active');
             tabModeReg.classList.remove('active');
+            const modalBanner = document.getElementById('modalExistingProfileBanner');
+            if (modalBanner) modalBanner.style.display = 'none';
             if (rolePickerGroup) rolePickerGroup.style.display = 'none';
             if (nameFieldGroup) nameFieldGroup.style.display = 'none';
             if (instFieldGroup) instFieldGroup.style.display = 'none';
@@ -2780,19 +3717,48 @@
 
             if (res && res.user) {
               clearAuthError();
+
+              // --- NEW ACCOUNT: Must verify email before entering app ---
+              if (isReg && res.requiresVerification) {
+                // Keep the gatekeeper overlay open, switch to verification wall card
+                const mainGkCard = document.getElementById('gkMainAuthCard');
+                const verifCard = document.getElementById('gkVerificationCard');
+                const profileCard = document.getElementById('gkProfileCompletionCard');
+                const verifEmailDisplay = document.getElementById('verifEmailDisplay');
+
+                if (mainGkCard) mainGkCard.style.display = 'none';
+                if (profileCard) profileCard.style.display = 'none';
+                if (verifEmailDisplay) verifEmailDisplay.textContent = cleanEmail;
+                if (verifCard) verifCard.style.display = 'block';
+
+                // Make sure the gatekeeper overlay is visible
+                const gk = document.getElementById('authGatekeeperOverlay');
+                if (gk) {
+                  gk.classList.remove('authenticated-hidden');
+                  gk.style.display = 'flex';
+                }
+                return; // Stop here — don't let user into the app yet
+              }
+
+              // --- EXISTING ACCOUNT SIGN-IN or ADMIN: Grant access ---
               this.userManager.saveUser(res.user);
 
               if (isReg && !localStorage.getItem('cc_trial_expiry')) {
                 this.subManager.startFreeTrial('monthly');
               }
               this.hideAuthModal();
+              const gk = document.getElementById('authGatekeeperOverlay');
+              if (gk) {
+                gk.style.display = 'none';
+                gk.classList.add('authenticated-hidden');
+              }
               this.updateUserUI();
               this.updateSubscriptionUI();
-              this.showToast(`✅ Welcome, ${res.user.name || name || 'Doctor'}! Cloud session active.`, 'success');
-              if (res.requiresVerification) {
-                setTimeout(() => {
-                  this.showToast(`✉️ Verification link sent to ${cleanEmail}.`, 'info');
-                }, 1200);
+
+              if (isReg) {
+                this.showOnboardingOfferSheet(res.user.name || name);
+              } else {
+                this.showToast(`✅ Welcome, ${res.user.name || name || 'Doctor'}! Cloud session active.`, 'success');
               }
             }
           } catch (err) {
@@ -2855,9 +3821,26 @@
                     this.subManager.startFreeTrial('monthly');
                   }
 
+                  // Mark user as fully logged in now that email is verified
+                  if (window.firebaseService && window.firebaseService.currentUser) {
+                    window.firebaseService.currentUser.isLoggedIn = true;
+                    window.firebaseService.currentUser.emailVerified = true;
+                    localStorage.setItem(window.firebaseService.authKey, JSON.stringify(window.firebaseService.currentUser));
+                    localStorage.setItem(window.firebaseService.subKey, window.firebaseService.currentUser.tier || 'trial');
+                    localStorage.setItem(window.firebaseService.trialExpiryKey, (window.firebaseService.currentUser.trialExpiry || '').toString());
+                    this.userManager.saveUser(window.firebaseService.currentUser);
+                    document.documentElement.classList.add('is-authenticated-user');
+                  }
+
                   const user = this.userManager.currentUser;
                   const isProfileDone = user && ((user.role === 'admin') || (user.isProfileComplete === true && !!user.role && !!user.name));
                   if (isProfileDone) {
+                    // Dismiss gatekeeper and enter the app
+                    const gk = document.getElementById('authGatekeeperOverlay');
+                    if (gk) {
+                      gk.style.display = 'none';
+                      gk.classList.add('authenticated-hidden');
+                    }
                     this.updateUserUI();
                     this.updateSubscriptionUI();
                     this.showToast('🎉 Email verified successfully! Welcome to Critical Care Hub.', 'success');
@@ -2991,6 +3974,24 @@
 
                 // If user has not completed clinical profile, gatekeeper presents gkProfileCompletionCard
                 if (!res.user.isProfileComplete && res.user.role !== 'admin') {
+                  const savedUser = this.userManager.currentUser;
+                  if (savedUser && savedUser.name && savedUser.name !== 'Guest' && savedUser.name !== 'Doctor') {
+                    try {
+                      const updatedUser = await window.firebaseService.completeClinicalProfile({
+                        name: savedUser.name,
+                        role: savedUser.role || 'Doctor',
+                        institution: savedUser.institution || ''
+                      });
+                      this.userManager.saveUser(updatedUser);
+                      this.hideAuthModal();
+                      this.updateUserUI();
+                      this.updateSubscriptionUI();
+                      this.showToast(`✅ Welcome, ${updatedUser.name}! Account connected.`, 'success');
+                      return;
+                    } catch(err) {
+                      console.warn('Auto profile completion error:', err);
+                    }
+                  }
                   this.updateUserUI();
                   this.showToast('🩺 Please complete your clinical profile to continue.', 'info');
                   return;
@@ -3114,6 +4115,13 @@
             let name = nameInput ? nameInput.value.trim() : (isReg ? 'Doctor' : email.split('@')[0]);
             const instInput = document.getElementById('setupInstitutionInput');
             const inst = instInput ? instInput.value.trim() : '';
+
+            // If user already had a saved onboarding name/role, reuse it!
+            const savedUser = this.userManager.currentUser;
+            if (isReg && savedUser && savedUser.name && savedUser.name !== 'Guest' && savedUser.name !== 'Doctor') {
+              name = savedUser.name;
+              role = savedUser.role || role;
+            }
 
             if (role === 'Doctor' && name && !name.toLowerCase().startsWith('dr')) {
               name = 'Dr. ' + name;
@@ -3247,33 +4255,32 @@
         const gkNameGroup = document.getElementById('gkNameGroup');
         const gkInstGroup = document.getElementById('gkInstitutionGroup');
         const gkSubmitBtn = document.getElementById('gkSubmitBtn');
+        const gkBackBtn = document.getElementById('gkBackToAppBtn');
+
+        if (gkBackBtn) {
+          gkBackBtn.addEventListener('click', () => {
+            const gk = document.getElementById('authGatekeeperOverlay');
+            if (gk) {
+              gk.style.display = 'none';
+              gk.classList.add('authenticated-hidden');
+            }
+            const user = this.userManager.currentUser;
+            if (!user || !user.isLoggedIn) {
+              const iosOverlay = document.getElementById('iosOnboardingOverlay');
+              if (iosOverlay) iosOverlay.classList.add('active');
+            }
+          });
+        }
 
         if (gkTabReg && gkTabLog) {
           gkTabReg.addEventListener('click', () => {
             clearAuthError();
-            gkTabReg.classList.add('active');
-            gkTabLog.classList.remove('active');
-            if (gkRoleGroup) gkRoleGroup.style.display = 'block';
-            if (gkNameGroup) gkNameGroup.style.display = 'block';
-            if (gkInstGroup) gkInstGroup.style.display = 'block';
-            if (gkForgotLink) gkForgotLink.style.display = 'none';
-            if (gkSubmitBtn) {
-              gkSubmitBtn.disabled = false;
-              gkSubmitBtn.textContent = 'Complete Setup & Enter Suite';
-            }
+            this.openGatekeeperSignUp();
           });
+
           gkTabLog.addEventListener('click', () => {
             clearAuthError();
-            gkTabLog.classList.add('active');
-            gkTabReg.classList.remove('active');
-            if (gkRoleGroup) gkRoleGroup.style.display = 'none';
-            if (gkNameGroup) gkNameGroup.style.display = 'none';
-            if (gkInstGroup) gkInstGroup.style.display = 'none';
-            if (gkForgotLink) gkForgotLink.style.display = 'inline';
-            if (gkSubmitBtn) {
-              gkSubmitBtn.disabled = false;
-              gkSubmitBtn.textContent = 'Sign In to Account';
-            }
+            this.openGatekeeperLogin();
           });
         }
 
@@ -3299,11 +4306,29 @@
             const passInput = document.getElementById('gkPasswordInput');
             const pass = passInput ? passInput.value : '';
             const roleSelect = document.getElementById('gkRoleSelect');
-            const role = (email === 'admin@criticalcare.med') ? 'admin' : (roleSelect ? roleSelect.value : 'Doctor');
+            let role = (email === 'admin@criticalcare.med') ? 'admin' : (roleSelect ? roleSelect.value : 'Doctor');
             const nameInput = document.getElementById('gkFullNameInput');
             let name = nameInput ? nameInput.value.trim() : (isReg ? 'Doctor' : email.split('@')[0]);
             const instInput = document.getElementById('gkInstitutionInput');
             const inst = instInput ? instInput.value.trim() : '';
+
+            // User input takes highest priority so any changes made on the sign-up form are preserved
+            const savedUser = this.userManager ? this.userManager.currentUser : null;
+            if (isReg) {
+              const enteredName = nameInput ? nameInput.value.trim() : '';
+              if (enteredName) {
+                name = enteredName;
+              } else if (savedUser && savedUser.name && savedUser.name !== 'Guest' && savedUser.name !== 'Doctor') {
+                name = savedUser.name;
+              }
+
+              const enteredRole = roleSelect ? roleSelect.value : '';
+              if (enteredRole) {
+                role = enteredRole;
+              } else if (savedUser && savedUser.role) {
+                role = savedUser.role;
+              }
+            }
 
             if (role === 'Doctor' && name && !name.toLowerCase().startsWith('dr')) {
               name = 'Dr. ' + name;
@@ -3383,6 +4408,85 @@
           });
         }
 
+        // ── Hub Banner ✏️ Edit button → open Profile modal ──────────────────
+        const dashIdentBtn = document.getElementById('dashDoctorIdentBtn');
+        if (dashIdentBtn) {
+          dashIdentBtn.addEventListener('click', () => {
+            const user = this.userManager.currentUser;
+            if (user && user.isLoggedIn) {
+              this.showAuthModal();
+            } else {
+              this.openGatekeeperLogin();
+            }
+          });
+        }
+
+        // ── Edit Clinical Identity Form → Save Profile Changes ───────────────
+        const profileEditForm = document.getElementById('profileEditForm');
+        if (profileEditForm) {
+          profileEditForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const newName      = (document.getElementById('editProfileNameInput')?.value || '').trim();
+            const newRole      = (document.getElementById('editProfileRoleSelect')?.value || '').trim();
+            const newInst      = (document.getElementById('editProfileInstInput')?.value  || '').trim();
+
+            if (!newName) {
+              this.showToast('⚠️ Please enter your full name.', 'warning');
+              return;
+            }
+
+            // Ensure Dr. prefix for physician-type roles
+            const doctorRoles = ['specialist doctor', 'resident doctor', 'general practitioner'];
+            const cleanName = doctorRoles.includes(newRole.toLowerCase()) && !newName.toLowerCase().startsWith('dr')
+              ? `Dr. ${newName}`
+              : newName;
+
+            const saveBtn = document.getElementById('saveProfileChangesBtn');
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Saving…'; }
+
+            try {
+              // 1. Persist locally via UserManager
+              this.userManager.saveUser({
+                name: cleanName,
+                role: newRole,
+                institution: newInst,
+                isLoggedIn: true
+              });
+
+              // 2. Sync to Firestore if Firebase is active
+              if (window.firebaseService) {
+                try {
+                  await window.firebaseService.completeClinicalProfile({
+                    name: cleanName,
+                    role: newRole,
+                    institution: newInst
+                  });
+                } catch (fbErr) {
+                  console.warn('Firestore profile sync error:', fbErr);
+                }
+              }
+
+              // 3. Refresh all UI surfaces
+              this.updateUserUI();
+
+              // 4. Also refresh the edit form's own header labels immediately
+              const profileDisplayName = document.getElementById('profileDisplayName');
+              if (profileDisplayName) profileDisplayName.textContent = cleanName;
+              const profileRoleBadge = document.getElementById('profileRoleBadge');
+              if (profileRoleBadge) profileRoleBadge.textContent = newRole;
+
+              this.showToast(`✅ Profile updated: ${cleanName} · ${newRole}`, 'success');
+              this.hideAuthModal();
+            } catch (err) {
+              console.error('Profile save error:', err);
+              this.showToast('❌ Could not save profile. Please try again.', 'error');
+            } finally {
+              if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Save Profile Changes'; }
+            }
+          });
+        }
+
         // Hub Pro Banner
         const hubProBtn = document.getElementById('hubProBannerBtn');
         if (hubProBtn) {
@@ -3455,6 +4559,20 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').then((reg) => {
           console.log('Critical Care ServiceWorker active:', reg.scope);
+          try {
+            reg.update();
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('New version detected! Reloading to apply latest update...');
+                    window.location.reload();
+                  }
+                });
+              }
+            });
+          } catch(e) {}
         }).catch((err) => {
           console.warn('ServiceWorker notice:', err);
         });
