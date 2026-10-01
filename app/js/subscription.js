@@ -10,26 +10,41 @@ export class SubscriptionManager {
     this.currentTier = this.loadSubscriptionState(); // 'free' or 'pro'
     this.selectedPlan = 'annual'; // 'annual' or 'monthly'
     this.plans = {
+      weekly: {
+        id: 'cc_pro_weekly_499',
+        name: 'Weekly Pro',
+        price: '₹ 499',
+        period: '/ week',
+        equivalent: '₹499.00 / week',
+        tag: 'Quick try',
+        badge: null
+      },
       monthly: {
-        id: 'cc_pro_monthly_499',
+        id: 'cc_pro_monthly_999',
         name: 'Monthly Pro',
-        price: '₹399',
-        period: '/month',
-        billingText: 'Billed monthly. Cancel anytime.',
-        trialText: null,
-        badge: null,
-        savings: null
+        price: '₹ 999',
+        period: '/ month',
+        equivalent: '₹249.75 / week',
+        tag: 'Flexible',
+        badge: 'SAVE 50%'
       },
       annual: {
-        id: 'cc_pro_annual_3999',
-        name: 'Annual Pro (All-Access)',
-        price: '₹2,999',
+        id: 'cc_pro_annual_3499',
+        name: 'Yearly Pro',
+        price: '₹ 3,499',
+        period: '/ year',
+        equivalent: '₹67.29 / week',
+        tag: 'Best value',
+        badge: 'SAVE 71%'
+      },
+      discount: {
+        id: 'cc_pro_discount_2999',
+        name: 'Just For You Annual',
+        price: '₹2,999.00',
+        originalPrice: '₹25,948.00',
+        savings: '₹22,949.00 stays in your pocket',
         period: '/year',
-        equivalent: '₹249/mo',
-        billingText: 'Billed annually after 7-day free trial.',
-        trialText: '7-DAY FREE TRIAL',
-        badge: 'MOST POPULAR',
-        savings: 'SAVE 38%'
+        badge: '-%88 ANNUAL PREMIUM'
       }
     };
 

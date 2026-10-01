@@ -3,7 +3,7 @@
  * Enables 100% offline hospital readiness for all clinical simulators.
  */
 
-const CACHE_NAME = 'critical-care-cache-v2.12.1';
+const CACHE_NAME = 'critical-care-cache-v2.18.0';
 
 // Core assets to pre-cache on install
 const PRECACHE_ASSETS = [

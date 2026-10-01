@@ -15,6 +15,7 @@ import {
   GoogleAuthProvider,
   getRedirectResult,
   signInWithEmailAndPassword,
+  signInWithCredential,
   createUserWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
@@ -779,7 +780,9 @@ class FirebaseService {
     return false;
   }
 
-  // --- 3. Live Google Sign-In (Cross-Platform & WebView Resilient) ---
+  // --- 3. Live Google Sign-In via Google Identity Services (GIS) with Multi-Account Selector ---
+  // Uses official GIS tokenClient to force Google's multi-account chooser overlay,
+  // with resilient fallback to Firebase Auth popup with prompt: 'select_account'.
   async signInWithGoogle() {
     if (!navigator.onLine) {
       throw new Error('Google Sign-In requires an active internet connection.');
@@ -787,50 +790,128 @@ class FirebaseService {
 
     await this._ensureInitialized();
 
-    if (this.isRealFirebaseActive && this.fbAuth) {
-      try {
-        // Force account picker every time — clear any cached login hint
-        // so the user sees ALL their Google accounts on the device
-        this.googleProvider.setCustomParameters({
-          prompt: 'select_account',
-          include_granted_scopes: 'true'
-        });
-
-        let cred;
-        try {
-          cred = await signInWithPopup(this.fbAuth, this.googleProvider, browserPopupRedirectResolver);
-        } catch (popupErr) {
-          console.warn('Popup attempt result, checking fallback mode:', popupErr.message);
-          if (popupErr.code === 'auth/popup-blocked' || 
-              popupErr.code === 'auth/operation-not-supported-in-this-environment' ||
-              popupErr.code === 'auth/missing-initial-state') {
-            // Also set on redirect path
-            this.googleProvider.setCustomParameters({
-              prompt: 'select_account',
-              include_granted_scopes: 'true'
-            });
-            await signInWithRedirect(this.fbAuth, this.googleProvider, browserPopupRedirectResolver);
-            return { pending: true };
-          }
-          throw popupErr;
-        }
-
-        if (cred && cred.user) {
-          const user = await this._syncFirebaseUserDoc(cred.user);
-          return { success: true, user: user || this.currentUser };
-        }
-      } catch (err) {
-        console.error('Google Sign-In error:', err);
-        if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/user-cancelled') {
-          const cancelErr = new Error('Google Sign-In was cancelled.');
-          cancelErr.code = err.code;
-          throw cancelErr;
-        }
-        throw new Error(err.message || 'Google Sign-In failed. Please ensure Google Play Services or your browser allows popup sign-in.');
-      }
+    if (!this.isRealFirebaseActive || !this.fbAuth) {
+      throw new Error('Google Authentication service is currently connecting. Please tap again in a moment.');
     }
 
-    throw new Error('Google Authentication service is currently connecting. Please tap again in a moment.');
+    const WEB_CLIENT_ID = '617853293846-3tnpo8qhg4q2hpd65d8kck9bedsb7aqv.apps.googleusercontent.com';
+
+    // Resilient fallback method using standard Firebase Auth popup
+    const fallbackToFirebasePopup = async () => {
+      console.log('Initiating Firebase Auth popup with prompt: select_account...');
+      if (!this.googleProvider) {
+        this.googleProvider = new GoogleAuthProvider();
+      }
+      this.googleProvider.setCustomParameters({
+        prompt: 'select_account',
+        include_granted_scopes: 'true'
+      });
+      this.googleProvider.addScope('email');
+      this.googleProvider.addScope('profile');
+
+      let cred;
+      try {
+        cred = await signInWithPopup(this.fbAuth, this.googleProvider, browserPopupRedirectResolver);
+      } catch (popupErr) {
+        console.warn('Popup attempt result, checking fallback mode:', popupErr.message);
+        if (popupErr.code === 'auth/popup-blocked' || 
+            popupErr.code === 'auth/operation-not-supported-in-this-environment' ||
+            popupErr.code === 'auth/missing-initial-state') {
+          await signInWithRedirect(this.fbAuth, this.googleProvider, browserPopupRedirectResolver);
+          return { pending: true };
+        }
+        throw popupErr;
+      }
+
+      if (cred && cred.user) {
+        const user = await this._syncFirebaseUserDoc(cred.user);
+        return { success: true, user: user || this.currentUser };
+      }
+      throw new Error('Google Sign-In failed: no user returned.');
+    };
+
+    // Try Google Identity Services (GIS) tokenClient for native multi-account selection
+    try {
+      const isGisAvailable = await new Promise((resolve) => {
+        const MAX_WAIT = 3500;
+        const start = Date.now();
+        const poll = () => {
+          if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+            resolve(true);
+          } else if (Date.now() - start > MAX_WAIT) {
+            resolve(false);
+          } else {
+            setTimeout(poll, 100);
+          }
+        };
+        poll();
+      });
+
+      if (!isGisAvailable) {
+        console.log('GIS library not loaded or delayed; using Firebase popup with select_account');
+        return await fallbackToFirebasePopup();
+      }
+
+      return await new Promise((resolve, reject) => {
+        try {
+          const tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: WEB_CLIENT_ID,
+            scope: 'openid email profile',
+            prompt: 'select_account',
+            callback: async (tokenResponse) => {
+              if (tokenResponse.error) {
+                if (tokenResponse.error === 'access_denied' || tokenResponse.error === 'user_cancelled') {
+                  const cancelErr = new Error('Google Sign-In was cancelled.');
+                  cancelErr.code = 'auth/cancelled-popup-request';
+                  reject(cancelErr);
+                  return;
+                }
+                console.warn('GIS error:', tokenResponse.error, '- trying Firebase Auth fallback');
+                try {
+                  const fbRes = await fallbackToFirebasePopup();
+                  resolve(fbRes);
+                } catch (fbErr) {
+                  reject(fbErr);
+                }
+                return;
+              }
+
+              try {
+                // Exchange GIS OAuth2 access token for Firebase Auth credential
+                const credential = GoogleAuthProvider.credential(null, tokenResponse.access_token);
+                const cred = await signInWithCredential(this.fbAuth, credential);
+
+                if (cred && cred.user) {
+                  const user = await this._syncFirebaseUserDoc(cred.user);
+                  resolve({ success: true, user: user || this.currentUser });
+                } else {
+                  reject(new Error('Google Sign-In failed: no user returned.'));
+                }
+              } catch (credErr) {
+                console.warn('signInWithCredential error, trying Firebase popup fallback:', credErr);
+                try {
+                  const fbRes = await fallbackToFirebasePopup();
+                  resolve(fbRes);
+                } catch (fbErr) {
+                  reject(fbErr);
+                }
+              }
+            }
+          });
+
+          tokenClient.requestAccessToken({ prompt: 'select_account' });
+        } catch (initErr) {
+          console.warn('GIS initTokenClient exception, falling back to Firebase popup:', initErr);
+          fallbackToFirebasePopup().then(resolve).catch(reject);
+        }
+      });
+    } catch (err) {
+      if (err.code === 'auth/cancelled-popup-request' || err.message?.includes('cancelled')) {
+        throw err;
+      }
+      console.warn('Google Sign-In caught error, falling back:', err);
+      return await fallbackToFirebasePopup();
+    }
   }
 
   // --- 4. Password Reset & Verification Utilities (Direct REST with Web SDK Fallback) ---

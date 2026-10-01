@@ -43,6 +43,20 @@
   --shadow-glow: 0 8px 32px rgba(6, 182, 212, 0.15);
 }
 
+/* ==========================================================================
+   EDGE / WINDOWS CHROMIUM NATIVE PASSWORD EYE ICON SUPPRESSION
+   Ensures only custom-designed SVG toggle button is rendered.
+   ========================================================================== */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear,
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Reset & Base */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -1460,12 +1474,12 @@ html, body {
 
 .toast-container {
   position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 24px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
   left: 16px;
   right: 16px;
   z-index: 100005;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   align-items: center;
   gap: 8px;
   pointer-events: none;
@@ -1482,7 +1496,7 @@ html, body {
   color: #fff;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(10px);
   transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   text-align: center;
   max-width: 90%;
@@ -2327,11 +2341,7 @@ html.is-native-app .auth-gatekeeper-overlay {
 }
 
 .setup-tabs-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 18px;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 10px;
+  display: none !important;
 }
 
 .setup-tab-btn {
@@ -2532,11 +2542,7 @@ html.is-authenticated-user .auth-gatekeeper-overlay,
 }
 
 .auth-tabs-segmented {
-  display: flex;
-  background: #f1f5f9;
-  border-radius: 12px;
-  padding: 4px;
-  margin-bottom: 20px;
+  display: none !important;
 }
 
 .auth-tab-choice {
@@ -2925,3 +2931,1026 @@ html.is-authenticated-user .auth-gatekeeper-overlay,
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);
 }
+
+/* ==========================================================================
+   AI MEDICAL CASE SIMULATION - iOS ONBOARDING & GUIDED FUNNEL STYLES
+   ========================================================================== */
+
+/* Fullscreen Onboarding Overlay */
+.ios-onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: radial-gradient(circle at 50% 15%, rgba(30, 58, 138, 0.45) 0%, rgba(15, 23, 42, 0.88) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ios-onboarding-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Onboarding Top Navigation Bar with Prominent Sign In Button */
+.onboard-top-bar {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(14px, env(safe-area-inset-top)) 20px 10px 20px;
+  z-index: 20;
+  margin-bottom: auto;
+  flex-shrink: 0;
+}
+
+.onboard-brand-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 6px 14px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.onboard-brand-text {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: #f8fafc;
+  text-transform: uppercase;
+}
+
+.onboard-top-signin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 18px;
+  border-radius: 22px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+  transition: all 0.2s ease;
+}
+
+.onboard-top-signin-btn:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+}
+
+/* Doctor Guide Character & Speech Bubble */
+.onboard-guide-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 12px 24px 14px 24px;
+  max-width: 520px;
+  margin: 0 auto;
+  width: 100%;
+  flex-shrink: 0;
+  animation: guideSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes guideSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.onboard-guide-avatar-box {
+  width: 92px;
+  height: 110px;
+  flex-shrink: 0;
+  position: relative;
+  border-radius: 18px 18px 0 0;
+  overflow: hidden;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.35));
+}
+
+.onboard-guide-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.onboard-speech-bubble {
+  position: relative;
+  background: #ffffff;
+  border-radius: 20px 20px 20px 4px;
+  padding: 13px 18px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #0f172a;
+  flex: 1;
+  margin-bottom: 12px;
+}
+
+.onboard-speech-bubble::after {
+  content: '';
+  position: absolute;
+  left: -8px;
+  bottom: 12px;
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 9px solid #ffffff;
+}
+
+/* Bottom Sheet Container */
+.onboard-bottom-sheet {
+  background: #ffffff;
+  border-radius: 30px 30px 0 0;
+  padding: 18px 24px 34px 24px;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.35);
+  max-height: 82vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
+  animation: sheetPopUp 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  position: relative;
+}
+
+@keyframes sheetPopUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* 4 Progress Dash Indicators */
+.onboard-progress-dashes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.onboard-dash {
+  width: 28px;
+  height: 4.5px;
+  border-radius: 3px;
+  background: #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.onboard-dash.active {
+  background: #0f172a;
+}
+
+.onboard-step-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+  margin: 0 0 16px 0;
+  text-align: left;
+}
+
+.onboard-input-wrap {
+  margin-bottom: 18px;
+}
+
+.onboard-text-input {
+  width: 100%;
+  padding: 16px 18px;
+  font-size: 17px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 16px;
+  outline: none;
+  color: #0f172a;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+.onboard-text-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.12);
+}
+
+.onboard-primary-btn {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 16px;
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  background: #64748b;
+  color: #ffffff;
+}
+
+.onboard-primary-btn.ready {
+  background: #0f172a;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+}
+
+.onboard-primary-btn.ready:active {
+  transform: scale(0.98);
+}
+
+.onboard-privacy-footer {
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 14px;
+  font-weight: 500;
+}
+
+/* Step 2: Role Grid */
+.onboard-role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.onboard-role-card {
+  position: relative;
+  height: 116px;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2.5px solid transparent;
+  transition: all 0.2s ease;
+  background: #0f172a;
+}
+
+.onboard-role-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.onboard-role-card:hover img {
+  transform: scale(1.05);
+}
+
+.onboard-role-card .role-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0.85) 100%);
+  display: flex;
+  align-items: flex-end;
+  padding: 10px 12px;
+}
+
+.onboard-role-card .role-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.25;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
+.onboard-role-card.selected {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.25);
+}
+
+.onboard-role-card.selected .role-name::before {
+  content: '✓ ';
+  color: #38bdf8;
+  font-weight: 900;
+}
+
+/* Step 3: Simulation Feedback Stars */
+.onboard-rating-box {
+  background: #f8fafc;
+  border-radius: 20px;
+  padding: 24px 16px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.rating-stars-row {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.star-tap-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #cbd5e1;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+}
+
+.star-tap-btn svg {
+  width: 38px;
+  height: 38px;
+}
+
+.star-tap-btn:hover,
+.star-tap-btn.active {
+  color: #f59e0b;
+  transform: scale(1.15);
+}
+
+.rating-helper-label {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Step 4: Just For You 88% Discount Sheet */
+.offer-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.offer-close-btn {
+  background: #f1f5f9;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.offer-discount-card {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.04);
+}
+
+.offer-badge-red {
+  display: inline-block;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.offer-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.offer-deal-price {
+  font-size: 32px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+}
+
+.offer-original-price {
+  font-size: 18px;
+  color: #94a3b8;
+  text-decoration: line-through;
+  font-weight: 600;
+}
+
+.offer-savings-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #059669;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.offer-countdown-pill {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  padding: 12px 18px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.3);
+}
+
+.offer-claim-btn {
+  width: 100%;
+  padding: 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f97316 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+  transition: all 0.2s ease;
+}
+
+.offer-claim-btn:active {
+  transform: scale(0.98);
+}
+
+.offer-skip-link {
+  display: block;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  margin-top: 14px;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   FULL-SCREEN HIGH-CONVERSION iOS PAYWALL (Reference Image 1)
+   ========================================================================== */
+
+.ios-paywall-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: #07111a;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ios-paywall-modal.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.ios-paywall-hero-container {
+  min-height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px 20px 30px 20px;
+  max-width: 520px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  background-image: linear-gradient(180deg, rgba(7, 17, 26, 0.15) 0%, rgba(7, 17, 26, 0.55) 45%, rgba(7, 17, 26, 0.98) 78%), url('../images/onboarding/paywall_hero_bg.jpg');
+  background-size: cover;
+  background-position: top center;
+  background-repeat: no-repeat;
+}
+
+.ios-paywall-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24vh;
+  position: relative;
+  z-index: 1000;
+}
+
+.ios-paywall-close-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 19px;
+  font-weight: 700;
+  position: relative;
+  z-index: 1001;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.ios-paywall-close-btn:active {
+  transform: scale(0.92);
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.ios-paywall-restore-btn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  padding: 6px 12px;
+}
+
+.ios-paywall-brand-block {
+  margin-bottom: 18px;
+}
+
+.ios-paywall-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ios-paywall-app-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+  object-fit: cover;
+}
+
+.ios-paywall-title-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.ios-paywall-main-name {
+  font-size: 26px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ios-pro-badge {
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.ios-title-underline {
+  width: 44px;
+  height: 3px;
+  background: #ef4444;
+  border-radius: 2px;
+  margin-top: 4px;
+}
+
+.ios-paywall-benefits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.ios-benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+}
+
+.ios-check-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+/* Social Proof Banner */
+.ios-social-proof-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.ios-social-proof-pill {
+  background: linear-gradient(90deg, #f97316 0%, #ef4444 100%);
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 800;
+  padding: 8px 18px;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.45);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.ios-social-proof-pill::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #ef4444;
+}
+
+/* 3 Pricing Cards Row */
+.ios-pricing-cards-row {
+  display: grid;
+  grid-template-columns: 1fr 1.08fr 1fr;
+  gap: 8px;
+  margin-bottom: 20px;
+  align-items: stretch;
+}
+
+.ios-pricing-card {
+  position: relative;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 16px 8px 14px 8px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ios-pricing-card.selected {
+  background: #ffffff;
+  border-color: #ffffff;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5), 0 0 0 2px #ef4444;
+}
+
+.ios-save-badge {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 3px 9px;
+  border-radius: 6px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
+}
+
+.ios-plan-tier-name {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.ios-pricing-card.selected .ios-plan-tier-name {
+  color: #64748b;
+}
+
+.ios-plan-main-price {
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.ios-pricing-card.selected .ios-plan-main-price {
+  color: #0f172a;
+}
+
+.ios-plan-period-text {
+  font-size: 10.5px;
+  color: #94a3b8;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.ios-pricing-card.selected .ios-plan-period-text {
+  color: #64748b;
+}
+
+.ios-plan-divider {
+  width: 60%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 6px auto;
+}
+
+.ios-pricing-card.selected .ios-plan-divider {
+  background: #e2e8f0;
+}
+
+.ios-plan-rate-equiv {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.ios-pricing-card.selected .ios-plan-rate-equiv {
+  color: #0f172a;
+}
+
+.ios-plan-feature-tag {
+  font-size: 9.5px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.ios-pricing-card.selected .ios-plan-feature-tag {
+  color: #64748b;
+}
+
+/* Big Action Button */
+.ios-upgrade-cta-btn {
+  width: 100%;
+  padding: 18px 24px;
+  border-radius: 32px;
+  background: #ffffff;
+  color: #0f172a;
+  border: none;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.25);
+  margin-bottom: 14px;
+  transition: all 0.2s ease;
+}
+
+.ios-upgrade-cta-btn:active {
+  transform: scale(0.98);
+}
+
+.ios-arrow-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #0f172a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
+/* Footer store policy */
+.ios-paywall-footer {
+  text-align: center;
+}
+
+.ios-store-cancel-note {
+  font-size: 11.5px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.ios-legal-links {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.ios-legal-links a {
+  color: #94a3b8;
+  text-decoration: none;
+  margin: 0 6px;
+}
+
+.ios-legal-links a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   DOCTOR PROFILE CARD & GAMIFICATION STATS (Background of Ref Images 2, 3, 4)
+   ========================================================================== */
+
+.dash-doctor-profile-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.dash-profile-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.dash-doctor-ident {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dash-avatar-circle {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #fef08a;
+  border: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 22px;
+}
+
+.dash-avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dash-doctor-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dash-doctor-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.dash-role-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #15803d;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.dash-subscribe-btn {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 800;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+  transition: all 0.2s ease;
+}
+
+.dash-subscribe-btn:active {
+  transform: scale(0.96);
+}
+
+.dash-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.dash-stat-chip {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 14px;
+  padding: 10px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.dash-stat-value-box {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dash-stat-label {
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.dash-xp-progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dash-xp-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.dash-xp-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+
+.dash-xp-fill {
+  height: 100%;
+  width: 12%;
+  background: linear-gradient(90deg, #38bdf8 0%, #2563eb 100%);
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+
