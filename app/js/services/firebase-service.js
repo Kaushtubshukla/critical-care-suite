@@ -897,51 +897,50 @@ class FirebaseService {
   async deleteCurrentUser() {
     const uid = (this.currentUser && this.currentUser.uid) ||
                 (this.fbAuth && this.fbAuth.currentUser && this.fbAuth.currentUser.uid);
-    const idToken = this.currentUser && this.currentUser.idToken;
+    const refreshToken = this.currentUser && this.currentUser.refreshToken;
 
-    // Step 1: Delete Firestore user document (via SDK or REST)
-    if (uid) {
-      if (this.fbDb) {
-        try {
-          await deleteDoc(doc(this.fbDb, 'users', uid));
-          console.log('✅ Firestore user doc deleted:', uid);
-        } catch (e) {
-          console.warn('Firestore deleteDoc notice:', e.message);
-        }
+    console.log('deleteCurrentUser called. uid:', uid, 'has refreshToken:', !!refreshToken, 'fbAuth.currentUser:', !!(this.fbAuth && this.fbAuth.currentUser));
+
+    // Step 1: Delete Firestore user document
+    if (uid && this.fbDb) {
+      try {
+        await deleteDoc(doc(this.fbDb, 'users', uid));
+        console.log('Firestore user doc deleted:', uid);
+      } catch (e) {
+        console.warn('Firestore deleteDoc notice:', e.message);
       }
     }
 
-    // Step 2: Delete Firebase Auth account
-    // Primary path: SDK deleteUser (works when fbAuth.currentUser is set — i.e. Google Sign-In)
+    // Step 2a: SDK path for Google sign-in users
     if (this.fbAuth && this.fbAuth.currentUser) {
       try {
         await deleteUser(this.fbAuth.currentUser);
-        console.log('✅ Firebase Auth account deleted via SDK');
+        console.log('Firebase Auth account deleted via SDK');
       } catch (err) {
-        console.warn('SDK deleteUser notice (will try REST fallback):', err.message);
+        console.warn('SDK deleteUser error:', err.code, err.message);
       }
     }
 
-    // Fallback path: REST API deleteAccount (works for email/password users authenticated via REST)
-    // This is the CRITICAL path for our email/password flow since fbAuth.currentUser is null
-    if (idToken) {
+    // Step 2b: REST path - ALWAYS refresh token first before deletion
+    if (refreshToken) {
       try {
-        await this._callIdentityApi('delete', { idToken });
-        console.log('✅ Firebase Auth account deleted via REST API');
+        console.log('Refreshing idToken before deletion...');
+        const freshToken = await this._refreshIdToken(refreshToken);
+        if (freshToken) {
+          await this._callIdentityApi('delete', { idToken: freshToken });
+          console.log('Firebase Auth account deleted via REST API (fresh token)');
+        }
       } catch (restErr) {
-        // Token may be expired — try refreshing it first
-        if (restErr.rawCode && (restErr.rawCode.includes('INVALID_ID_TOKEN') || restErr.rawCode.includes('TOKEN_EXPIRED'))) {
+        console.error('REST delete error:', restErr.rawCode || restErr.message);
+        // Last resort: stored idToken
+        const storedToken = this.currentUser && this.currentUser.idToken;
+        if (storedToken) {
           try {
-            const freshToken = await this._refreshIdToken(this.currentUser.refreshToken);
-            if (freshToken) {
-              await this._callIdentityApi('delete', { idToken: freshToken });
-              console.log('✅ Firebase Auth account deleted via REST API (after token refresh)');
-            }
-          } catch (refreshErr) {
-            console.warn('REST delete after refresh notice:', refreshErr.message);
+            await this._callIdentityApi('delete', { idToken: storedToken });
+            console.log('Firebase Auth account deleted via REST (stored token)');
+          } catch (e2) {
+            console.error('REST delete with stored token also failed:', e2.rawCode || e2.message);
           }
-        } else {
-          console.warn('REST deleteAccount notice:', restErr.message);
         }
       }
     }
@@ -962,7 +961,7 @@ class FirebaseService {
     return { success: true };
   }
 
-  // --- 6. Admin Firestore Methods ---
+    // --- 6. Admin Firestore Methods ---
 
   _waitForFirebase(timeoutMs = 6000) {
     if (this.isRealFirebaseActive && this.fbDb) {

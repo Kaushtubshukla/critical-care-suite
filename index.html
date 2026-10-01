@@ -1514,9 +1514,16 @@
       }
 
       async deleteAccount() {
+        // Step 1: Attempt Firebase account deletion (must complete BEFORE clearing local state)
         if (window.firebaseService) {
-          try { await window.firebaseService.deleteCurrentUser(); } catch (e) {}
+          try {
+            await window.firebaseService.deleteCurrentUser();
+          } catch (e) {
+            console.error('deleteCurrentUser error:', e);
+            // Don't swallow — but still continue to clear local state
+          }
         }
+        // Step 2: Clear all local state
         try {
           localStorage.removeItem(USER_STORAGE_KEY);
           localStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
@@ -4370,10 +4377,21 @@
         }
 
         if (confirmDeleteBtn && deleteModal) {
-          confirmDeleteBtn.addEventListener('click', () => {
-            this.userManager.deleteAccount();
+          confirmDeleteBtn.addEventListener('click', async () => {
+            // Show loading state while Firebase deletes the account
+            confirmDeleteBtn.disabled = true;
+            confirmDeleteBtn.textContent = '⏳ Deleting...';
             deleteModal.classList.remove('show');
-            this.showToast('🗑️ Account and all stored data permanently deleted.', 'info');
+            try {
+              await this.userManager.deleteAccount();
+              this.showToast('🗑️ Account and all personal data permanently deleted.', 'info');
+            } catch (e) {
+              console.error('Delete account error:', e);
+              this.showToast('⚠️ Account data cleared locally. Firebase deletion may have failed.', 'error');
+            } finally {
+              confirmDeleteBtn.disabled = false;
+              confirmDeleteBtn.textContent = 'Delete Forever';
+            }
           });
         }
 
