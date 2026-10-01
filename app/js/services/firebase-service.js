@@ -270,7 +270,20 @@ class FirebaseService {
       const isVerified = fbUser.emailVerified || profile.emailVerified || (fbUser.email && fbUser.email.toLowerCase() === 'admin@criticalcare.med');
       const isProfileDone = (profile.role === 'admin') || (profile.isProfileComplete === true && !!profile.role && !!profile.name);
 
-      this.currentUser = { ...profile, emailVerified: isVerified, isProfileComplete: isProfileDone, isLoggedIn: true };
+      const savedRefreshToken = this.currentUser?.refreshToken || fbUser.refreshToken || localStorage.getItem('cch_auth_refresh_token');
+      const savedIdToken = this.currentUser?.idToken || localStorage.getItem('cch_auth_id_token');
+      if (fbUser.refreshToken) {
+        try { localStorage.setItem('cch_auth_refresh_token', fbUser.refreshToken); } catch(e) {}
+      }
+
+      this.currentUser = { 
+        ...profile, 
+        refreshToken: savedRefreshToken,
+        idToken: savedIdToken,
+        emailVerified: isVerified, 
+        isProfileComplete: isProfileDone, 
+        isLoggedIn: true 
+      };
       localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
       if (profile.tier) localStorage.setItem(this.subKey, profile.tier);
       if (profile.trialExpiry) localStorage.setItem(this.trialExpiryKey, profile.trialExpiry.toString());
@@ -584,6 +597,14 @@ class FirebaseService {
         }
       }
 
+      // Store tokens for persistent session and account deletion
+      if (signupRes.refreshToken) {
+        try { localStorage.setItem('cch_auth_refresh_token', signupRes.refreshToken); } catch(e) {}
+      }
+      if (idToken) {
+        try { localStorage.setItem('cch_auth_id_token', idToken); } catch(e) {}
+      }
+
       // Store the pending (unverified) session so the verification wall can poll
       this.currentUser = userDocData;
       localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
@@ -696,6 +717,13 @@ class FirebaseService {
         isLoggedIn: true
       };
 
+      if (signinRes.refreshToken) {
+        try { localStorage.setItem('cch_auth_refresh_token', signinRes.refreshToken); } catch(e) {}
+      }
+      if (idToken) {
+        try { localStorage.setItem('cch_auth_id_token', idToken); } catch(e) {}
+      }
+
       localStorage.setItem(this.authKey, JSON.stringify(this.currentUser));
       if (this.currentUser.tier) localStorage.setItem(this.subKey, this.currentUser.tier);
       if (this.currentUser.trialExpiry) localStorage.setItem(this.trialExpiryKey, this.currentUser.trialExpiry.toString());
@@ -780,9 +808,10 @@ class FirebaseService {
     return false;
   }
 
-  // --- 3. Live Google Sign-In via Google Identity Services (GIS) with Multi-Account Selector ---
-  // Uses official GIS tokenClient to force Google's multi-account chooser overlay,
-  // with resilient fallback to Firebase Auth popup with prompt: 'select_account'.
+  // --- 3. Live Google Sign-In with Multi-Account Selector ---
+  // Uses Firebase Auth GoogleAuthProvider with prompt: 'select_account'.
+  // This allows selecting from any logged-in account, or tapping "+ Use another account",
+  // without triggering Error 400: origin_mismatch in WebViews.
   async signInWithGoogle() {
     if (!navigator.onLine) {
       throw new Error('Google Sign-In requires an active internet connection.');
@@ -794,124 +823,50 @@ class FirebaseService {
       throw new Error('Google Authentication service is currently connecting. Please tap again in a moment.');
     }
 
-    const WEB_CLIENT_ID = '617853293846-3tnpo8qhg4q2hpd65d8kck9bedsb7aqv.apps.googleusercontent.com';
-
-    // Resilient fallback method using standard Firebase Auth popup
-    const fallbackToFirebasePopup = async () => {
-      console.log('Initiating Firebase Auth popup with prompt: select_account...');
-      if (!this.googleProvider) {
-        this.googleProvider = new GoogleAuthProvider();
-      }
-      this.googleProvider.setCustomParameters({
-        prompt: 'select_account',
-        include_granted_scopes: 'true'
-      });
-      this.googleProvider.addScope('email');
-      this.googleProvider.addScope('profile');
-
-      let cred;
-      try {
-        cred = await signInWithPopup(this.fbAuth, this.googleProvider, browserPopupRedirectResolver);
-      } catch (popupErr) {
-        console.warn('Popup attempt result, checking fallback mode:', popupErr.message);
-        if (popupErr.code === 'auth/popup-blocked' || 
-            popupErr.code === 'auth/operation-not-supported-in-this-environment' ||
-            popupErr.code === 'auth/missing-initial-state') {
-          await signInWithRedirect(this.fbAuth, this.googleProvider, browserPopupRedirectResolver);
-          return { pending: true };
-        }
-        throw popupErr;
-      }
-
-      if (cred && cred.user) {
-        const user = await this._syncFirebaseUserDoc(cred.user);
-        return { success: true, user: user || this.currentUser };
-      }
-      throw new Error('Google Sign-In failed: no user returned.');
-    };
-
-    // Try Google Identity Services (GIS) tokenClient for native multi-account selection
-    try {
-      const isGisAvailable = await new Promise((resolve) => {
-        const MAX_WAIT = 3500;
-        const start = Date.now();
-        const poll = () => {
-          if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-            resolve(true);
-          } else if (Date.now() - start > MAX_WAIT) {
-            resolve(false);
-          } else {
-            setTimeout(poll, 100);
-          }
-        };
-        poll();
-      });
-
-      if (!isGisAvailable) {
-        console.log('GIS library not loaded or delayed; using Firebase popup with select_account');
-        return await fallbackToFirebasePopup();
-      }
-
-      return await new Promise((resolve, reject) => {
-        try {
-          const tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: WEB_CLIENT_ID,
-            scope: 'openid email profile',
-            prompt: 'select_account',
-            callback: async (tokenResponse) => {
-              if (tokenResponse.error) {
-                if (tokenResponse.error === 'access_denied' || tokenResponse.error === 'user_cancelled') {
-                  const cancelErr = new Error('Google Sign-In was cancelled.');
-                  cancelErr.code = 'auth/cancelled-popup-request';
-                  reject(cancelErr);
-                  return;
-                }
-                console.warn('GIS error:', tokenResponse.error, '- trying Firebase Auth fallback');
-                try {
-                  const fbRes = await fallbackToFirebasePopup();
-                  resolve(fbRes);
-                } catch (fbErr) {
-                  reject(fbErr);
-                }
-                return;
-              }
-
-              try {
-                // Exchange GIS OAuth2 access token for Firebase Auth credential
-                const credential = GoogleAuthProvider.credential(null, tokenResponse.access_token);
-                const cred = await signInWithCredential(this.fbAuth, credential);
-
-                if (cred && cred.user) {
-                  const user = await this._syncFirebaseUserDoc(cred.user);
-                  resolve({ success: true, user: user || this.currentUser });
-                } else {
-                  reject(new Error('Google Sign-In failed: no user returned.'));
-                }
-              } catch (credErr) {
-                console.warn('signInWithCredential error, trying Firebase popup fallback:', credErr);
-                try {
-                  const fbRes = await fallbackToFirebasePopup();
-                  resolve(fbRes);
-                } catch (fbErr) {
-                  reject(fbErr);
-                }
-              }
-            }
-          });
-
-          tokenClient.requestAccessToken({ prompt: 'select_account' });
-        } catch (initErr) {
-          console.warn('GIS initTokenClient exception, falling back to Firebase popup:', initErr);
-          fallbackToFirebasePopup().then(resolve).catch(reject);
-        }
-      });
-    } catch (err) {
-      if (err.code === 'auth/cancelled-popup-request' || err.message?.includes('cancelled')) {
-        throw err;
-      }
-      console.warn('Google Sign-In caught error, falling back:', err);
-      return await fallbackToFirebasePopup();
+    if (!this.googleProvider) {
+      this.googleProvider = new GoogleAuthProvider();
     }
+    // Forces the Google account chooser every time (shows accounts + "Use another account")
+    this.googleProvider.setCustomParameters({
+      prompt: 'select_account',
+      include_granted_scopes: 'true'
+    });
+    this.googleProvider.addScope('email');
+    this.googleProvider.addScope('profile');
+
+    let cred;
+    try {
+      cred = await signInWithPopup(this.fbAuth, this.googleProvider, browserPopupRedirectResolver);
+    } catch (popupErr) {
+      console.warn('Popup attempt result, checking fallback mode:', popupErr.message);
+      if (popupErr.code === 'auth/popup-blocked' || 
+          popupErr.code === 'auth/operation-not-supported-in-this-environment' ||
+          popupErr.code === 'auth/missing-initial-state') {
+        await signInWithRedirect(this.fbAuth, this.googleProvider, browserPopupRedirectResolver);
+        return { pending: true };
+      }
+      if (popupErr.code === 'auth/popup-closed-by-user' || popupErr.code === 'auth/cancelled-popup-request') {
+        const cancelErr = new Error('Google Sign-In was cancelled.');
+        cancelErr.code = popupErr.code;
+        throw cancelErr;
+      }
+      throw popupErr;
+    }
+
+    if (cred && cred.user) {
+      try {
+        const idToken = await cred.user.getIdToken(true);
+        localStorage.setItem('cch_auth_id_token', idToken);
+      } catch(e) {}
+      if (cred.user.refreshToken) {
+        try { localStorage.setItem('cch_auth_refresh_token', cred.user.refreshToken); } catch(e) {}
+      }
+
+      const user = await this._syncFirebaseUserDoc(cred.user);
+      return { success: true, user: user || this.currentUser };
+    }
+
+    throw new Error('Google Sign-In failed: no user returned.');
   }
 
   // --- 4. Password Reset & Verification Utilities (Direct REST with Web SDK Fallback) ---
@@ -978,59 +933,85 @@ class FirebaseService {
   async deleteCurrentUser() {
     const uid = (this.currentUser && this.currentUser.uid) ||
                 (this.fbAuth && this.fbAuth.currentUser && this.fbAuth.currentUser.uid);
-    const refreshToken = this.currentUser && this.currentUser.refreshToken;
+    const refreshToken = (this.currentUser && this.currentUser.refreshToken) ||
+                         (this.fbAuth && this.fbAuth.currentUser && this.fbAuth.currentUser.refreshToken) ||
+                         localStorage.getItem('cch_auth_refresh_token');
 
-    console.log('deleteCurrentUser called. uid:', uid, 'has refreshToken:', !!refreshToken, 'fbAuth.currentUser:', !!(this.fbAuth && this.fbAuth.currentUser));
+    console.log('deleteCurrentUser initiated. uid:', uid, 'has refreshToken:', !!refreshToken);
 
-    // Step 1: Delete Firestore user document
-    if (uid && this.fbDb) {
+    let deleteSucceeded = false;
+    let lastError = null;
+
+    // 1. Obtain a fresh idToken for REST deletion
+    let idToken = null;
+    if (this.fbAuth && this.fbAuth.currentUser) {
       try {
-        await deleteDoc(doc(this.fbDb, 'users', uid));
-        console.log('Firestore user doc deleted:', uid);
+        idToken = await this.fbAuth.currentUser.getIdToken(true);
+        console.log('Obtained fresh idToken from fbAuth.currentUser');
       } catch (e) {
-        console.warn('Firestore deleteDoc notice:', e.message);
+        console.warn('fbAuth getIdToken error:', e.message);
+      }
+    }
+    if (!idToken && refreshToken) {
+      try {
+        console.log('Refreshing idToken via SecureToken REST API for account deletion...');
+        idToken = await this._refreshIdToken(refreshToken);
+        console.log('Refreshed idToken successfully');
+      } catch (e) {
+        console.warn('_refreshIdToken error:', e.message);
+      }
+    }
+    if (!idToken) {
+      idToken = this.currentUser?.idToken || localStorage.getItem('cch_auth_id_token');
+    }
+
+    // 2. Permanently delete from Firebase Auth via Identity Toolkit REST API
+    if (idToken) {
+      try {
+        await this._callIdentityApi('delete', { idToken: idToken });
+        deleteSucceeded = true;
+        console.log('✅ Firebase Auth user permanently deleted via Identity Toolkit REST API');
+      } catch (restErr) {
+        console.warn('Identity Toolkit REST delete error:', restErr.rawCode || restErr.message);
+        lastError = restErr;
       }
     }
 
-    // Step 2a: SDK path for Google sign-in users
+    // 3. Also delete via Firebase Auth Web SDK deleteUser
     if (this.fbAuth && this.fbAuth.currentUser) {
       try {
         await deleteUser(this.fbAuth.currentUser);
-        console.log('Firebase Auth account deleted via SDK');
-      } catch (err) {
-        console.warn('SDK deleteUser error:', err.code, err.message);
+        deleteSucceeded = true;
+        console.log('✅ Firebase Auth user deleted via SDK deleteUser');
+      } catch (sdkErr) {
+        console.warn('SDK deleteUser error:', sdkErr.code, sdkErr.message);
+        if (!deleteSucceeded) lastError = sdkErr;
       }
     }
 
-    // Step 2b: REST path - ALWAYS refresh token first before deletion
-    if (refreshToken) {
+    // 4. Delete Firestore user document
+    if (uid && this.fbDb) {
       try {
-        console.log('Refreshing idToken before deletion...');
-        const freshToken = await this._refreshIdToken(refreshToken);
-        if (freshToken) {
-          await this._callIdentityApi('delete', { idToken: freshToken });
-          console.log('Firebase Auth account deleted via REST API (fresh token)');
-        }
-      } catch (restErr) {
-        console.error('REST delete error:', restErr.rawCode || restErr.message);
-        // Last resort: stored idToken
-        const storedToken = this.currentUser && this.currentUser.idToken;
-        if (storedToken) {
-          try {
-            await this._callIdentityApi('delete', { idToken: storedToken });
-            console.log('Firebase Auth account deleted via REST (stored token)');
-          } catch (e2) {
-            console.error('REST delete with stored token also failed:', e2.rawCode || e2.message);
-          }
-        }
+        await deleteDoc(doc(this.fbDb, 'users', uid));
+        console.log('✅ Firestore user document deleted:', uid);
+      } catch (dbErr) {
+        console.warn('Firestore deleteDoc notice:', dbErr.message);
       }
     }
 
-    // Step 3: Clear all local persistent data
+    // If both deletion methods failed and this is a real Firebase user, do NOT pretend it succeeded!
+    if (!deleteSucceeded && uid && !uid.startsWith('local_')) {
+      const errMsg = lastError?.message || 'Unable to delete account from Firebase servers. For security, please sign in again and retry deletion.';
+      throw new Error(errMsg);
+    }
+
+    // 5. Clear all local persistent data
     try {
       localStorage.removeItem(this.authKey);
       localStorage.removeItem(this.subKey);
       localStorage.removeItem(this.trialExpiryKey);
+      localStorage.removeItem('cch_auth_refresh_token');
+      localStorage.removeItem('cch_auth_id_token');
       localStorage.removeItem('cc_selected_plan');
       localStorage.removeItem('cc_favorites');
       localStorage.removeItem('cc_recents');
