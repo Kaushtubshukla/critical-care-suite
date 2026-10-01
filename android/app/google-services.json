@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "617853293846",
+    "project_id": "critical-care-hub",
+    "storage_bucket": "critical-care-hub.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:617853293846:android:77854c122cb33732cdec37",
+        "android_client_info": {
+          "package_name": "com.criticalcare.med"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "617853293846-3tnpo8qhg4q2hpd65d8kck9bedsb7aqv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZurYCdt10QWiNce1fyfYSGugCxYcaYA8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "617853293846-3tnpo8qhg4q2hpd65d8kck9bedsb7aqv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
