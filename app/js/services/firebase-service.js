@@ -809,9 +809,9 @@ class FirebaseService {
   }
 
   // --- 3. Live Google Sign-In with Multi-Account Selector ---
-  // Uses Firebase Auth GoogleAuthProvider with prompt: 'select_account'.
-  // This allows selecting from any logged-in account, or tapping "+ Use another account",
-  // without triggering Error 400: origin_mismatch in WebViews.
+  // On Android devices: Launches the native Google Play Services bottom sheet (Screenshot 1)
+  // showing all Google accounts registered on the phone.
+  // On Desktop/Web: Uses Firebase Auth GoogleAuthProvider with prompt: 'select_account'.
   async signInWithGoogle() {
     if (!navigator.onLine) {
       throw new Error('Google Sign-In requires an active internet connection.');
@@ -823,10 +823,82 @@ class FirebaseService {
       throw new Error('Google Authentication service is currently connecting. Please tap again in a moment.');
     }
 
+    // 1. Android Native Google Play Services Account Manager (Option B)
+    if (window.AndroidNativeGoogleAuth && typeof window.AndroidNativeGoogleAuth.launchGoogleSignIn === 'function') {
+      console.log('📱 Triggering Native Android Google Play Services account picker...');
+      return new Promise((resolve, reject) => {
+        let cleanup = null;
+
+        const onSuccess = async (e) => {
+          if (cleanup) cleanup();
+          const { idToken } = e.detail || {};
+          if (!idToken) {
+            reject(new Error('Google Sign-In did not return an ID token.'));
+            return;
+          }
+          try {
+            console.log('✅ Received native Google ID token, authenticating with Firebase Cloud...');
+            const credential = GoogleAuthProvider.credential(idToken);
+            const cred = await signInWithCredential(this.fbAuth, credential);
+
+            if (cred && cred.user) {
+              try {
+                const freshIdToken = await cred.user.getIdToken(true);
+                localStorage.setItem('cch_auth_id_token', freshIdToken);
+              } catch(e) {}
+              if (cred.user.refreshToken) {
+                try { localStorage.setItem('cch_auth_refresh_token', cred.user.refreshToken); } catch(e) {}
+              }
+
+              const user = await this._syncFirebaseUserDoc(cred.user);
+              resolve({ success: true, user: user || this.currentUser });
+            } else {
+              reject(new Error('Google Sign-In failed: no user returned.'));
+            }
+          } catch (authErr) {
+            console.error('Firebase native credential error:', authErr);
+            reject(authErr);
+          }
+        };
+
+        const onError = (e) => {
+          if (cleanup) cleanup();
+          const msg = e.detail?.message || 'Google Sign-In failed.';
+          if (msg.includes('cancelled')) {
+            const cancelErr = new Error('Google Sign-In was cancelled.');
+            cancelErr.code = 'auth/cancelled-popup-request';
+            reject(cancelErr);
+          } else {
+            reject(new Error(msg));
+          }
+        };
+
+        cleanup = () => {
+          window.removeEventListener('cch:native-google-success', onSuccess);
+          window.removeEventListener('cch:native-google-error', onError);
+        };
+
+        window.addEventListener('cch:native-google-success', onSuccess);
+        window.addEventListener('cch:native-google-error', onError);
+
+        try {
+          window.AndroidNativeGoogleAuth.launchGoogleSignIn();
+        } catch (callErr) {
+          cleanup();
+          console.warn('Native launch error, falling back to Web OAuth:', callErr);
+          this._signInWithWebGoogle().then(resolve).catch(reject);
+        }
+      });
+    }
+
+    // 2. Web / Browser fallback
+    return this._signInWithWebGoogle();
+  }
+
+  async _signInWithWebGoogle() {
     if (!this.googleProvider) {
       this.googleProvider = new GoogleAuthProvider();
     }
-    // Forces the Google account chooser every time (shows accounts + "Use another account")
     this.googleProvider.setCustomParameters({
       prompt: 'select_account',
       include_granted_scopes: 'true'
