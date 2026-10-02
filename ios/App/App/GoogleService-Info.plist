@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>617853293846-6qjgv1k5oshh2i3jlckm2rpf6ei3a2go.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.617853293846-6qjgv1k5oshh2i3jlckm2rpf6ei3a2go</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>617853293846-u9v5937dsm96vje2v2pdqk27lnlpf7s4.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBip0gnq-UJWnVON_VLB9CFeroYmXLQ9lQ</string>
+	<key>GCM_SENDER_ID</key>
+	<string>617853293846</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.criticalcare.med</string>
+	<key>PROJECT_ID</key>
+	<string>critical-care-hub</string>
+	<key>STORAGE_BUCKET</key>
+	<string>critical-care-hub.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:617853293846:ios:a8f430eb0675d41ccdec37</string>
+</dict>
+</plist>

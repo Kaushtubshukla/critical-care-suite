@@ -79,6 +79,13 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @JavascriptInterface
+                public void exitApp() {
+                    runOnUiThread(() -> {
+                        MainActivity.this.finishAffinity();
+                    });
+                }
+
+                @JavascriptInterface
                 public boolean isAvailable() {
                     return true;
                 }

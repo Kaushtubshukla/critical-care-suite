@@ -2549,8 +2549,12 @@
           // 4. On root home screen: double-press back within 2.2s to exit app
           const now = Date.now();
           if (this.lastBackPress && (now - this.lastBackPress < 2200)) {
-            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+            if (window.AndroidNativeGoogleAuth && typeof window.AndroidNativeGoogleAuth.exitApp === 'function') {
+              window.AndroidNativeGoogleAuth.exitApp();
+            } else if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
               window.Capacitor.Plugins.App.exitApp();
+            } else if (navigator.app && navigator.app.exitApp) {
+              navigator.app.exitApp();
             }
           } else {
             this.lastBackPress = now;
